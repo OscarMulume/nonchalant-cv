@@ -1,0 +1,17 @@
+Network Engineer – Example Telecom (fictional sample offer)
+Location: Kinshasa, DRC – 2-year contract
+
+We are looking for a Network Engineer to design, run and secure our network.
+
+Responsibilities
+- Routine network administration, health checks and preventive maintenance
+- Resolve hardware, software and network incidents on site and remotely
+- Log all incidents in our ticketing system and follow ITIL incident and change management
+- Produce weekly and monthly SLA reports
+
+Requirements
+- 3+ years in network engineering or IT infrastructure
+- Strong knowledge of TCP/IP, routing, switching, VLANs, VPNs, DNS and DHCP
+- Experience with Cisco, Fortinet or Huawei equipment
+- CCNA or equivalent certification is an advantage
+- Good English and French

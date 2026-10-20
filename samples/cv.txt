@@ -1,0 +1,21 @@
+Amani Kabila (fictional sample CV)
+IT Infrastructure & Network Technician – Kinshasa, DRC
+
+Experience
+IT Officer – Sample Hotels Group (2024 – present)
+- Administer the network of three hotels: Cisco switches, VLANs and enterprise Wi-Fi.
+- Keep 99.5% availability on guest Wi-Fi and resolve critical incidents within 2 hours.
+- Write monthly reports for management and train staff.
+
+Network Technician – Sample ISP (2022 – 2024)
+- Installed structured cabling and configured routers and DHCP for small business clients.
+- Handled first-level support tickets.
+
+Skills
+TCP/IP, routing, switching, VLAN, DHCP, DNS, Linux, Windows, Python, monitoring, backup
+
+Certifications
+Cisco CCNA: Introduction to Networks (course)
+
+Languages
+French (native), English (professional)
