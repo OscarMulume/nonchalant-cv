@@ -89,6 +89,8 @@ def compare(required: list[str], cv_text: str) -> Match:
     seen, ordered = set(), []
     for term in required:
         key = normalize(term).strip()
+        if len(key) > 3 and key.endswith("s") and key[-2].isalpha():
+            key = key[:-1]  # "VLANs" and "vlan" count once
         if key and key not in seen:
             seen.add(key)
             ordered.append(term.strip())

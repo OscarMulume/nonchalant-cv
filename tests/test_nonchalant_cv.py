@@ -33,6 +33,10 @@ class KeywordTests(unittest.TestCase):
         self.assertEqual(m.missing, ["Fortinet"])
         self.assertEqual(m.score, 67)
 
+    def test_plural_and_singular_count_once(self):
+        m = nc.compare(["VLANs", "vlan", "VPNs", "vpn"], "VLAN")
+        self.assertEqual(m.required, ["VLANs", "VPNs"])
+
 
 class FakeChat:
     """Stands in for Ollama so the tests run without a model."""
