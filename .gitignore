@@ -3,3 +3,8 @@ __pycache__/
 .venv/
 report.md
 my_*.txt
+cv_*.md
+cv_*.html
+cv_*_facts.json
+offer_*.md
+my_*
