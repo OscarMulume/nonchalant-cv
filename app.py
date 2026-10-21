@@ -85,7 +85,10 @@ class Handler(BaseHTTPRequestHandler):
             models = installed_models()
             return self.send_json({"ollama": bool(models), "models": models,
                                    "default": mosala.DEFAULT_MODEL,
-                                   "languages": mosala.LANGUAGES, "cv_languages": sorted(mosala.CV_LABELS)})
+                                   "groups": [{"id": g, "langs": [{"code": c, "native": n, "where": w, "tier": t}
+                                                                  for c, _, n, w, t in items]}
+                                              for g, items in mosala.LANGUAGE_GROUPS],
+                                   "cv_languages": sorted(mosala.CV_LABELS)})
         path = "index.html" if self.path in ("/", "/index.html") else None
         if not path:
             self.send_error(404)

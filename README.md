@@ -19,8 +19,21 @@ Built for the DEV Hacktoberfest 2026 Open-Source AI Challenge, Week 3: *Slow and
 | `offer` | A job offer in French or English | The offer explained in simple words, in your language |
 | `match` | Your CV and a job offer | ATS keyword score, missing keywords, three tuned CV bullets and a cover letter draft |
 
-Languages you can use: Lingala, Swahili, Kikongo, Tshiluba (the four national languages of the DR Congo),
-French, English, Spanish, Portuguese, Arabic, Mandarin, Hindi, Bengali, Russian and Urdu.
+### Languages
+
+Mosala is Congolese first. The language menu is grouped:
+
+- **National languages of the DR Congo:** Lingala, Kiswahili, Kikongo, Tshiluba.
+- **Other languages of the DR Congo:** Kiluba, Otetela, Lomongo, Kinande, Mashi, Pazande.
+- **Other African languages (27):** Kinyarwanda, Kirundi, Luganda, Amharic, Oromo, Somali, Tigrinya, Hausa, Yoruba, Igbo, Twi, Ewe, Wolof, Pulaar, Bambara, Sango, Umbundu, isiZulu, isiXhosa, Afrikaans, Sesotho, Setswana, chiShona, Chichewa, Bemba, Malagasy, Tamazight.
+- **World languages:** French, English, Spanish, Portuguese, Arabic, Mandarin, Hindi, Bengali, Russian, Urdu.
+
+Each language shows the quality to expect from small open models today (good, medium or experimental),
+so nobody is misled. CVs can be written in French, English, Swahili, Spanish or Portuguese.
+
+The page also offers **guided questions** (trade, years, where, tasks, tools, one achievement, languages,
+training) for people who do not know what to write, and a **Copy for WhatsApp** button, because in the
+DR Congo a CV is often shared on WhatsApp first.
 
 ## Quick start
 

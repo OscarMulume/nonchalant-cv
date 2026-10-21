@@ -31,14 +31,74 @@ import nonchalant_cv as core
 
 DEFAULT_MODEL = "qwen2.5:3b"
 
-# Languages people can speak to Mosala and receive explanations in: the DR Congo's
-# national languages first, then the most widely spoken languages in the world.
-LANGUAGES = {
-    "ln": "Lingala", "sw": "Swahili", "kg": "Kikongo", "lua": "Tshiluba",
-    "fr": "French", "en": "English", "es": "Spanish", "pt": "Portuguese", "ar": "Arabic",
-    "zh": "Mandarin Chinese", "hi": "Hindi", "bn": "Bengali", "ru": "Russian", "ur": "Urdu",
-}
-LOCAL = {"ln", "sw", "kg", "lua"}
+# Languages people can speak to Mosala and receive explanations in. Mosala is Congolese first:
+# the DR Congo's four national languages, then other widely spoken Congolese languages, then
+# other African languages and the world's most spoken languages as options.
+# Each entry: code, English name (for the model), native name (for people), where spoken, tier.
+# Tier is the quality to expect from small open models today: "good", "medium" or "experimental".
+LANGUAGE_GROUPS = [
+    ("drc_national", [
+        ("ln", "Lingala", "Lingála", "DR Congo, Congo", "experimental"),
+        ("sw", "Congolese Swahili", "Kiswahili", "DR Congo (east), East Africa", "medium"),
+        ("kg", "Kikongo (Kituba)", "Kikongo", "DR Congo (west), Congo, Angola", "experimental"),
+        ("lua", "Tshiluba (Luba-Kasai)", "Tshiluba", "DR Congo (Kasai)", "experimental"),
+    ]),
+    ("drc_other", [
+        ("lu", "Kiluba (Luba-Katanga)", "Kiluba", "DR Congo (Katanga)", "experimental"),
+        ("tll", "Otetela", "Otetela", "DR Congo (Sankuru, Maniema)", "experimental"),
+        ("lol", "Lomongo", "Lomongo", "DR Congo (Équateur)", "experimental"),
+        ("nnb", "Kinande", "Kinande", "DR Congo (North Kivu)", "experimental"),
+        ("shr", "Mashi", "Mashi", "DR Congo (South Kivu)", "experimental"),
+        ("zne", "Zande", "Pazande", "DR Congo (north), South Sudan, CAR", "experimental"),
+    ]),
+    ("africa", [
+        ("rw", "Kinyarwanda", "Ikinyarwanda", "Rwanda, DR Congo (Kivu)", "experimental"),
+        ("rn", "Kirundi", "Ikirundi", "Burundi", "experimental"),
+        ("lg", "Luganda", "Luganda", "Uganda", "experimental"),
+        ("am", "Amharic", "አማርኛ", "Ethiopia", "medium"),
+        ("om", "Oromo", "Afaan Oromoo", "Ethiopia, Kenya", "experimental"),
+        ("so", "Somali", "Soomaali", "Somalia, Djibouti, Ethiopia, Kenya", "medium"),
+        ("ti", "Tigrinya", "ትግርኛ", "Eritrea, Ethiopia", "experimental"),
+        ("ha", "Hausa", "Hausa", "Nigeria, Niger, Ghana", "medium"),
+        ("yo", "Yoruba", "Yorùbá", "Nigeria, Benin", "medium"),
+        ("ig", "Igbo", "Igbo", "Nigeria", "medium"),
+        ("ak", "Twi (Akan)", "Twi", "Ghana", "experimental"),
+        ("ee", "Ewe", "Eʋegbe", "Ghana, Togo", "experimental"),
+        ("wo", "Wolof", "Wolof", "Senegal, Gambia", "experimental"),
+        ("ff", "Fula (Pulaar)", "Pulaar", "West and Central Africa", "experimental"),
+        ("bm", "Bambara", "Bamanankan", "Mali", "experimental"),
+        ("sg", "Sango", "Sängö", "Central African Republic", "experimental"),
+        ("umb", "Umbundu", "Umbundu", "Angola", "experimental"),
+        ("zu", "Zulu", "isiZulu", "South Africa", "medium"),
+        ("xh", "Xhosa", "isiXhosa", "South Africa", "medium"),
+        ("af", "Afrikaans", "Afrikaans", "South Africa, Namibia", "good"),
+        ("st", "Sesotho", "Sesotho", "Lesotho, South Africa", "experimental"),
+        ("tn", "Setswana", "Setswana", "Botswana, South Africa", "experimental"),
+        ("sn", "Shona", "chiShona", "Zimbabwe", "experimental"),
+        ("ny", "Chichewa", "Chichewa", "Malawi, Zambia", "experimental"),
+        ("bem", "Bemba", "Ichibemba", "Zambia, DR Congo (Katanga)", "experimental"),
+        ("mg", "Malagasy", "Malagasy", "Madagascar", "medium"),
+        ("ber", "Tamazight (Berber)", "Tamaziɣt", "Morocco, Algeria", "experimental"),
+    ]),
+    ("world", [
+        ("fr", "French", "Français", "", "good"), ("en", "English", "English", "", "good"),
+        ("es", "Spanish", "Español", "", "good"), ("pt", "Portuguese", "Português", "", "good"),
+        ("ar", "Arabic", "العربية", "", "good"), ("zh", "Mandarin Chinese", "中文", "", "good"),
+        ("hi", "Hindi", "हिन्दी", "", "good"), ("bn", "Bengali", "বাংলা", "", "good"),
+        ("ru", "Russian", "Русский", "", "good"), ("ur", "Urdu", "اردو", "", "good"),
+    ]),
+]
+LANG_INFO = {code: {"name": name, "native": native, "where": where, "tier": tier, "group": group}
+             for group, items in LANGUAGE_GROUPS for code, name, native, where, tier in items}
+LANGUAGES = {code: info["name"] for code, info in LANG_INFO.items()}
+# Explanations in these languages get a "please check" note: models are less reliable there.
+LOCAL = {code for code, info in LANG_INFO.items() if info["tier"] != "good"}
+
+
+def language_for_prompt(code: str) -> str:
+    info = LANG_INFO[code]
+    return f"{info['name']} (as spoken in {info['where']})" if info["where"] else info["name"]
+
 
 # CV output languages, with section titles written by hand (not by the model).
 CV_LABELS = {
@@ -50,13 +110,15 @@ CV_LABELS = {
            "tools": "Herramientas y equipos", "languages": "Idiomas", "education": "Formación"},
     "pt": {"summary": "Perfil", "experience": "Experiência profissional", "skills": "Competências",
            "tools": "Ferramentas e equipamentos", "languages": "Idiomas", "education": "Formação"},
+    "sw": {"summary": "Wasifu kwa ufupi", "experience": "Uzoefu wa kazi", "skills": "Ujuzi",
+           "tools": "Zana na vifaa", "languages": "Lugha", "education": "Elimu"},
 }
 
 NUMBER = re.compile(r"\d+")
 NUMBER_WORDS = {  # so "six years" written as a word in the story still counts as said
-    "1": ["one", "un", "moja", "moko"], "2": ["two", "deux", "mbili", "mibale"],
-    "3": ["three", "trois", "tatu", "misato"], "4": ["four", "quatre", "nne", "minei"],
-    "5": ["five", "cinq", "tano", "mitano"], "6": ["six", "sita", "motoba"],
+    "1": ["one", "un", "moja", "moko"], "2": ["two", "deux", "mbili", "miwili", "mibale"],
+    "3": ["three", "trois", "tatu", "mitatu", "misato"], "4": ["four", "quatre", "nne", "minne", "minei"],
+    "5": ["five", "cinq", "tano", "mitano"], "6": ["six", "sita", "motoba", "mitoba"],
     "7": ["seven", "sept", "saba", "nsambo"], "8": ["eight", "huit", "nane", "mwambe"],
     "9": ["nine", "neuf", "tisa", "libwa"], "10": ["ten", "dix", "kumi", "zomi"],
     "50": ["fifty", "cinquante", "hamsini", "ntuku mitano"],
@@ -72,11 +134,21 @@ def numbers_said(story: str) -> set[str]:
     return said
 
 
-def strip_unsaid_numbers(text: str, said: set[str], warnings: list[str]) -> str:
+WARNING_TEXT = {
+    "number_removed": 'Removed a detail with a number not in your story ({numbers}): "{text}"',
+    "no_details": "The model could not find work details. Add more about what you do and where.",
+}
+
+
+def warning_text(w: dict) -> str:
+    return WARNING_TEXT[w["kind"]].format(**w)
+
+
+def strip_unsaid_numbers(text: str, said: set[str], warnings: list[dict]) -> str:
     """Remove a line's claim if it contains a number the person never said."""
     bad = [n for n in NUMBER.findall(text) if n not in said]
     if bad:
-        warnings.append(f"Removed a detail with a number not in your story ({', '.join(bad)}): \"{text}\"")
+        warnings.append({"kind": "number_removed", "numbers": ", ".join(bad), "text": text})
         return ""
     return text
 
@@ -85,8 +157,8 @@ def strip_unsaid_numbers(text: str, said: set[str], warnings: list[str]) -> str:
 
 def understand(story: str, chat) -> dict:
     system = (
-        "A worker describes their work, possibly in Lingala, Swahili, Kikongo, Tshiluba, French or "
-        "English. Understand it and reply in English with JSON only, shaped as "
+        "A worker describes their work, possibly in Lingala, Swahili, Kikongo, Tshiluba, another "
+        "Congolese or African language, French or English. Understand it and reply in English with JSON only, shaped as "
         '{"spoken_language": str, "trade": str, "experiences": [{"role": str, "place": str, '
         '"period": str, "tasks": [str]}], "skills": [str], "tools": [str], "languages": [str], '
         '"education": [str]}. Use only facts the person said. If something is not said, use an '
@@ -109,7 +181,7 @@ def understand(story: str, chat) -> dict:
 # --- Step 2: write the CV in the target language ------------------------------
 
 def write_cv(profile: dict, target: str, chat) -> dict:
-    language = LANGUAGES[target]
+    language = language_for_prompt(target)
     system = (
         f"You turn a worker's facts into professional CV content in {language}. Reply with JSON only, "
         'shaped as {"title": str, "summary": str, "experiences": [{"role": str, "place": str, '
@@ -125,7 +197,7 @@ def write_cv(profile: dict, target: str, chat) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def clean_cv(cv: dict, said: set[str], warnings: list[str]) -> dict:
+def clean_cv(cv: dict, said: set[str], warnings: list[dict]) -> dict:
     def text(v):
         return strip_unsaid_numbers(v.strip(), said, warnings) if isinstance(v, str) else ""
 
@@ -150,7 +222,7 @@ def clean_cv(cv: dict, said: set[str], warnings: list[str]) -> dict:
 
 def render_markdown(cv: dict, target: str, contact: dict) -> str:
     L = CV_LABELS[target]
-    lines = [f"# {contact.get('name') or ''}".rstrip(), ""]
+    lines = [f"# {contact['name']}", ""] if contact.get("name") else []
     if cv["title"]:
         lines += [f"**{cv['title']}**", ""]
     info = " · ".join(v for v in (contact.get("city"), contact.get("phone"), contact.get("email")) if v)
@@ -196,17 +268,17 @@ def render_html(markdown: str, title: str) -> str:
 
 # --- Commands -----------------------------------------------------------------
 
-def make_cv(story: str, target: str, contact: dict, chat) -> tuple[str, dict, list[str]]:
-    warnings: list[str] = []
+def make_cv(story: str, target: str, contact: dict, chat) -> tuple[str, dict, list[dict]]:
+    warnings: list[dict] = []
     profile = understand(story, chat)
     cv = clean_cv(write_cv(profile, target, chat), numbers_said(story), warnings)
     if not cv["experiences"] and not cv["skills"]:
-        warnings.append("The model could not find work details. Add more about what you do and where.")
+        warnings.append({"kind": "no_details"})
     return render_markdown(cv, target, contact), profile, warnings
 
 
 def explain_offer(offer: str, lang: str, chat) -> str:
-    language = LANGUAGES[lang]
+    language = language_for_prompt(lang)
     system = (
         f"Explain this job offer in simple {language}, as you would to a friend who did not study "
         "much. Use short sentences and these parts: what the job is, where, what they ask for, "
@@ -228,7 +300,7 @@ def cmd_cv(a, chat) -> int:
     out.with_name(out.stem + "_facts.json").write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
     print(md)
     for w in warnings:
-        print(f"Check: {w}")
+        print(f"Check: {warning_text(w)}")
     print(f"Saved {out}, {out.with_suffix('.html')} (open it and print to PDF) and the facts file.")
     print("Read your CV carefully: fix anything that is not exactly true.")
     return 0

@@ -63,6 +63,13 @@
   .warn ul { margin: 4px 0 0 18px; padding: 0; }
   details { margin-top: 12px; color: var(--muted); }
   details pre { font: .85rem/1.4 var(--mono); white-space: pre-wrap; background: var(--paper); padding: 10px; border-radius: 8px; }
+  .tier { margin: 6px 0 0; font-size: .9rem; color: var(--muted); }
+  .tier b { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem; margin-right: 6px; }
+  .tier b.good { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .tier b.medium, .tier b.experimental { background: var(--warn-bg); color: var(--warn-ink); }
+  .guided { display: grid; gap: 0 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 6px; }
+  .guided[hidden] { display: none; }
+  .linkish { background: none; border: 0; padding: 0; margin-top: 8px; color: var(--accent); font: 600 .95rem var(--body); cursor: pointer; text-decoration: underline; }
   footer { margin-top: 22px; color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
   footer select { width: auto; padding: 4px 8px; }
 </style>
@@ -93,6 +100,8 @@
     <p class="lead" data-t="cv_lead"></p>
     <label for="story"><span data-t="story_label"></span> <span class="hint" data-t="story_hint"></span></label>
     <textarea id="story"></textarea>
+    <button class="linkish" id="guided-toggle" type="button" data-t="guided_toggle"></button>
+    <div class="guided" id="guided" hidden></div>
     <div class="row">
       <div><label for="name" data-t="name"></label><input id="name" autocomplete="name"></div>
       <div><label for="city" data-t="city"></label><input id="city" autocomplete="address-level2"></div>
@@ -115,6 +124,7 @@
     <textarea id="offer"></textarea>
     <label for="olang" data-t="your_lang"></label>
     <select id="olang"></select>
+    <p class="tier" id="olang-tier"></p>
     <div class="actions">
       <button class="btn" id="go-offer" data-t="btn_offer"></button>
       <span class="working" id="w-offer"><span class="dot"></span><span data-t="working"></span></span>
@@ -145,7 +155,13 @@
 <script>
 // Interface text. Lingala and Swahili lines should be reviewed by native speakers.
 const T = {
-  fr: { tagline: "Votre travail, votre langue, votre CV.", tab_cv: "Créer mon CV", tab_offer: "Comprendre une offre", tab_match: "Comparer CV et offre",
+  fr: { w_number_removed: "Retiré : un détail avec un chiffre que vous n'avez pas dit ({numbers}) : « {text} »", w_no_details: "Mosala n'a pas trouvé de détails sur votre travail. Ajoutez ce que vous faites et où.",
+    guided_toggle: "Vous ne savez pas quoi écrire ? Répondez à quelques questions", guided_hide: "Écrire librement",
+    q: ["Quel est votre métier ?", "Depuis combien d'années le faites-vous ?", "Où avez-vous travaillé (atelier, entreprise, à votre compte) ?", "Que savez-vous faire ? Citez vos tâches.", "Avec quels outils ou machines travaillez-vous ?", "Une réalisation dont vous êtes fier (avec un chiffre si possible) ?", "Quelles langues parlez-vous ?", "Études ou formations, même courtes ?"],
+    g_drc_national: "Langues nationales de la RDC", g_drc_other: "Autres langues de la RDC", g_africa: "Autres langues africaines", g_world: "Langues du monde",
+    tier_good: "bonne", tier_medium: "moyenne", tier_experimental: "expérimentale", tier_label: "Qualité attendue", tier_check: "Faites relire par quelqu'un qui parle la langue.",
+    whatsapp: "Copier pour WhatsApp",
+    tagline: "Votre travail, votre langue, votre CV.", tab_cv: "Créer mon CV", tab_offer: "Comprendre une offre", tab_match: "Comparer CV et offre",
     cv_lead: "Racontez votre métier comme à un ami, en lingala, swahili, français ou une autre langue. Mosala écrit votre CV.",
     story_label: "Votre travail, dans votre langue", story_hint: "(ce que vous faites, où, depuis combien d'années, avec quels outils)",
     name: "Nom", city: "Ville", phone: "Téléphone", email: "E-mail", cv_lang: "Langue du CV", btn_cv: "Créer mon CV",
@@ -157,7 +173,13 @@ const T = {
     private: "Tout reste sur votre ordinateur.", model: "Modèle",
     ollama_down: "Ollama ne répond pas. Ouvrez l'application Ollama, puis rechargez cette page.", empty: "Remplissez le champ avant de lancer.",
     failed: "Ça n'a pas marché. Réessayez ; si ça recommence, essayez un autre modèle." },
-  en: { tagline: "Your work, your language, your CV.", tab_cv: "Create my CV", tab_offer: "Understand an offer", tab_match: "Match CV and offer",
+  en: { w_number_removed: "Removed a detail with a number you did not say ({numbers}): \"{text}\"", w_no_details: "Mosala could not find work details. Add what you do and where.",
+    guided_toggle: "Not sure what to write? Answer a few questions", guided_hide: "Write freely",
+    q: ["What is your trade?", "For how many years have you done it?", "Where did you work (workshop, company, self-employed)?", "What can you do? List your tasks.", "Which tools or machines do you use?", "One thing you are proud of (with a number if you can)?", "Which languages do you speak?", "Studies or training, even short ones?"],
+    g_drc_national: "National languages of the DR Congo", g_drc_other: "Other languages of the DR Congo", g_africa: "Other African languages", g_world: "World languages",
+    tier_good: "good", tier_medium: "medium", tier_experimental: "experimental", tier_label: "Expected quality", tier_check: "Ask someone who speaks the language to check it.",
+    whatsapp: "Copy for WhatsApp",
+    tagline: "Your work, your language, your CV.", tab_cv: "Create my CV", tab_offer: "Understand an offer", tab_match: "Match CV and offer",
     cv_lead: "Describe your work as you would to a friend, in Lingala, Swahili, French or another language. Mosala writes your CV.",
     story_label: "Your work, in your language", story_hint: "(what you do, where, for how many years, with which tools)",
     name: "Name", city: "City", phone: "Phone", email: "Email", cv_lang: "CV language", btn_cv: "Create my CV",
@@ -169,7 +191,13 @@ const T = {
     private: "Everything stays on your computer.", model: "Model",
     ollama_down: "Ollama is not answering. Open the Ollama app, then reload this page.", empty: "Fill in the field first.",
     failed: "That did not work. Try again; if it happens again, try another model." },
-  sw: { tagline: "Kazi yako, lugha yako, CV yako.", tab_cv: "Tengeneza CV yangu", tab_offer: "Elewa tangazo la kazi", tab_match: "Linganisha CV na tangazo",
+  sw: { w_number_removed: "Imeondolewa: jambo lenye namba ambayo hukusema ({numbers}): \"{text}\"", w_no_details: "Mosala haikupata maelezo ya kazi yako. Ongeza unachofanya na wapi.",
+    guided_toggle: "Hujui uandike nini? Jibu maswali machache", guided_hide: "Andika kwa uhuru",
+    q: ["Kazi yako ni ipi?", "Umefanya kazi hii kwa miaka mingapi?", "Umefanya kazi wapi (karakana, kampuni, kujiajiri)?", "Unajua kufanya nini? Taja kazi zako.", "Unatumia vifaa au mashine gani?", "Jambo moja unalojivunia (na idadi ikiwezekana)?", "Unazungumza lugha gani?", "Masomo au mafunzo, hata mafupi?"],
+    g_drc_national: "Lugha za kitaifa za DRC", g_drc_other: "Lugha nyingine za DRC", g_africa: "Lugha nyingine za Afrika", g_world: "Lugha za dunia",
+    tier_good: "nzuri", tier_medium: "wastani", tier_experimental: "ya majaribio", tier_label: "Ubora unaotarajiwa", tier_check: "Mwombe mtu anayezungumza lugha hiyo aihakiki.",
+    whatsapp: "Nakili kwa WhatsApp",
+    tagline: "Kazi yako, lugha yako, CV yako.", tab_cv: "Tengeneza CV yangu", tab_offer: "Elewa tangazo la kazi", tab_match: "Linganisha CV na tangazo",
     cv_lead: "Eleza kazi yako kama unavyomweleza rafiki, kwa Kiswahili, Lingala, Kifaransa au lugha nyingine. Mosala itaandika CV yako.",
     story_label: "Kazi yako, kwa lugha yako", story_hint: "(unafanya nini, wapi, kwa miaka mingapi, kwa vifaa gani)",
     name: "Jina", city: "Mji", phone: "Simu", email: "Barua pepe", cv_lang: "Lugha ya CV", btn_cv: "Tengeneza CV yangu",
@@ -181,7 +209,13 @@ const T = {
     private: "Kila kitu kinabaki kwenye kompyuta yako.", model: "Modeli",
     ollama_down: "Ollama haijibu. Fungua programu ya Ollama, kisha pakia upya ukurasa huu.", empty: "Jaza sehemu hii kwanza.",
     failed: "Haikufanikiwa. Jaribu tena; ikitokea tena, jaribu modeli nyingine." },
-  ln: { tagline: "Mosala na yo, monoko na yo, CV na yo.", tab_cv: "Sala CV na ngai", tab_offer: "Kososola annonce", tab_match: "Kokokanisa CV na annonce",
+  ln: { w_number_removed: "Elongolami: likambo na motango oyo olobaki te ({numbers}): \"{text}\"", w_no_details: "Mosala ezwi makambo ya mosala na yo te. Bakisa nini osalaka mpe wapi.",
+    guided_toggle: "Oyebi te nini ya kokoma? Yanola mituna moke", guided_hide: "Koma ndenge olingi",
+    q: ["Mosala na yo ezali nini?", "Osali yango mibu boni?", "Osalaki wapi (atelier, société, yo moko)?", "Oyebi kosala nini? Pesa misala na yo.", "Osalaka na bisaleli to ba machine nini?", "Likambo moko osalaki malamu (na motango soki ekoki)?", "Olobaka minoko nini?", "Kelasi to formation nini osalaki, ata ya mokuse?"],
+    g_drc_national: "Minoko ya ekolo ya RDC", g_drc_other: "Minoko mosusu ya RDC", g_africa: "Minoko mosusu ya Afrika", g_world: "Minoko ya mokili",
+    tier_good: "malamu", tier_medium: "ya katikati", tier_experimental: "ya komeka", tier_label: "Bolamu oyo ekoki kozala", tier_check: "Senga moto oyo alobaka monoko yango atala yango.",
+    whatsapp: "Kokopia mpo na WhatsApp",
+    tagline: "Mosala na yo, monoko na yo, CV na yo.", tab_cv: "Sala CV na ngai", tab_offer: "Kososola annonce", tab_match: "Kokokanisa CV na annonce",
     cv_lead: "Lobela biso mosala na yo ndenge olobelaka moninga, na Lingala, Swahili, Français to monoko mosusu. Mosala ekokoma CV na yo.",
     story_label: "Mosala na yo, na monoko na yo", story_hint: "(osalaka nini, wapi, mibu boni, na bisaleli nini)",
     name: "Nkombo", city: "Engumba", phone: "Telefone", email: "E-mail", cv_lang: "Monoko ya CV", btn_cv: "Sala CV na ngai",
@@ -194,7 +228,8 @@ const T = {
     ollama_down: "Ollama ezali koyanola te. Fungola application Ollama, sima zongisa page oyo.", empty: "Tondisa esika oyo liboso.",
     failed: "Esimbi te. Meka lisusu; soki ezongi, meka modèle mosusu." },
 };
-const NATIVE = { ln: "Lingala", sw: "Kiswahili", kg: "Kikongo", lua: "Tshiluba", fr: "Français", en: "English", es: "Español",
+let GROUPS = [];
+const NATIVE = { sw: "Kiswahili",  ln: "Lingala", sw: "Kiswahili", kg: "Kikongo", lua: "Tshiluba", fr: "Français", en: "English", es: "Español",
   pt: "Português", ar: "العربية", zh: "中文", hi: "हिन्दी", bn: "বাংলা", ru: "Русский", ur: "اردو" };
 
 let ui = "fr";
@@ -207,6 +242,8 @@ function applyUI() {
   document.documentElement.lang = ui;
   document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = t(el.dataset.t); });
   document.querySelectorAll("[data-ui]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.ui === ui));
+  renderGuided();
+  renderOfferSelect();
   $("story").placeholder = "Nkombo na ngai ezali Jean. Nazali électricien na Kinshasa, nasali mosala oyo mibu motoba…";
 }
 document.querySelectorAll("[data-ui]").forEach((b) => b.addEventListener("click", () => {
@@ -217,6 +254,38 @@ document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click
   document.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
   ["cv", "offer", "match"].forEach((n) => { $("panel-" + n).hidden = n !== b.dataset.tab; });
 }));
+
+let guidedOn = false;
+function renderGuided() {
+  const box = $("guided"), old = [...box.querySelectorAll("input")].map((i) => i.value);
+  box.innerHTML = t("q").map((q, i) => `<div><label for="q${i}">${q}</label><input id="q${i}"></div>`).join("");
+  box.querySelectorAll("input").forEach((inp, i) => { inp.value = old[i] || ""; });
+  box.hidden = !guidedOn; $("story").hidden = guidedOn;
+  $("guided-toggle").textContent = guidedOn ? t("guided_hide") : t("guided_toggle");
+}
+$("guided-toggle").onclick = () => { guidedOn = !guidedOn; renderGuided(); };
+function storyText() {
+  if (!guidedOn) return $("story").value;
+  return t("q").map((q, i) => [q, $("q" + i).value.trim()]).filter(([, a]) => a).map(([q, a]) => `${q} ${a}`).join("\n");
+}
+
+function renderOfferSelect() {
+  const sel = $("olang"); if (!GROUPS.length) return;
+  const keep = sel.value || (["sw", "ln"].includes(ui) ? ui : "ln");
+  sel.innerHTML = GROUPS.map((g) => `<optgroup label="${t("g_" + g.id)}">` +
+    g.langs.map((l) => `<option value="${l.code}"${l.code === keep ? " selected" : ""}>${l.native}${l.where ? " · " + l.where : ""}</option>`).join("") + "</optgroup>").join("");
+  showTier();
+}
+function showTier() {
+  const l = GROUPS.flatMap((g) => g.langs).find((x) => x.code === $("olang").value); if (!l) return;
+  $("olang-tier").innerHTML = `${t("tier_label")} : <b class="${l.tier}">${t("tier_" + l.tier)}</b>${l.tier !== "good" ? t("tier_check") : ""}`;
+}
+$("olang").addEventListener("change", showTier);
+
+function whatsappText(markdown) {
+  const lines = markdown.split("\n").map((l) => l.replace(/^#+ /, "").replace(/\*\*/g, "*").trim()).filter(Boolean);
+  return lines.slice(0, 18).join("\n");
+}
 
 function fillSelect(sel, codes, chosen) {
   sel.innerHTML = codes.map((c) => `<option value="${c}"${c === chosen ? " selected" : ""}>${NATIVE[c] || c}</option>`).join("");
@@ -285,19 +354,24 @@ async function run(kind, payload, render) {
 
 function warnBox(list) {
   if (!list || !list.length) return "";
-  return `<div class="warn"><strong>${t("check")}</strong><ul>${list.map((w) => `<li>${md(w).replace(/<\/?p>/g, "")}</li>`).join("")}</ul></div>`;
+  const fmt = (w) => t("w_" + w.kind).replace("{numbers}", w.numbers || "").replace("{text}", w.text || "");
+  return `<div class="warn"><strong>${t("check")}</strong><ul>${list.map((w) => `<li>${md(fmt(w)).replace(/<\/?p>/g, "")}</li>`).join("")}</ul></div>`;
 }
 
 $("go-cv").onclick = () => run("cv", {
-  story: $("story").value, to: $("cvlang").value, name: $("name").value, city: $("city").value, phone: $("phone").value, email: $("email").value,
+  story: storyText(), to: $("cvlang").value, name: $("name").value, city: $("city").value, phone: $("phone").value, email: $("email").value,
 }, (box, d) => {
   box.innerHTML = warnBox(d.warnings) + `<div class="doc">${md(d.markdown)}</div>` +
     `<details><summary>${t("facts")}</summary><pre>${JSON.stringify(d.facts, null, 2).replace(/</g, "&lt;")}</pre></details>`;
   toolbar(box, { markdown: d.markdown, html: d.html, base: "cv_" + $("cvlang").value });
+  const wa = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("whatsapp") });
+  wa.onclick = async () => { try { await navigator.clipboard.writeText(whatsappText(d.markdown)); wa.textContent = t("copied"); } catch (e) {} };
+  box.querySelector(".actions").append(wa);
 });
 
 $("go-offer").onclick = () => run("offer", { offer: $("offer").value, lang: $("olang").value }, (box, d) => {
-  let text = `## ${NATIVE[$("olang").value]}\n\n${d.text}\n`;
+  const lang = GROUPS.flatMap((g) => g.langs).find((x) => x.code === $("olang").value);
+  let text = `## ${lang ? lang.native : ""}\n\n${d.text}\n`;
   if (d.keywords.length) text += `\n**${t("keywords")}:** ${d.keywords.join(", ")}\n`;
   if (d.local) text += `\n> ${t("local_note")}\n`;
   box.innerHTML = `<div class="doc" dir="auto">${md(text)}</div>`;
@@ -313,8 +387,8 @@ $("go-match").onclick = () => run("match", { cv: $("mcv").value, offer: $("moffe
   applyUI();
   try {
     const s = await (await fetch("/api/status")).json();
-    fillSelect($("cvlang"), ["fr", "en", "es", "pt"], ui === "en" ? "en" : "fr");
-    fillSelect($("olang"), Object.keys(s.languages), ["sw", "ln"].includes(ui) ? ui : "ln");
+    fillSelect($("cvlang"), s.cv_languages, ui === "en" ? "en" : "fr");
+    GROUPS = s.groups; renderOfferSelect();
     const models = s.models.length ? s.models : [s.default];
     $("model").innerHTML = models.map((m) => `<option${m === s.default ? " selected" : ""}>${m}</option>`).join("");
     if (!s.ollama) showStatus(t("ollama_down"));

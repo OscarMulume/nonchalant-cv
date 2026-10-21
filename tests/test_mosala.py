@@ -52,12 +52,18 @@ class CvTests(unittest.TestCase):
     def test_invented_number_is_removed_and_reported(self):
         md, _, warnings = mosala.make_cv(self.story, "fr", {"name": "Jean Mbuyi"}, fake_chat)
         self.assertNotIn("12 techniciens", md)
-        self.assertTrue(any("12" in w for w in warnings))
+        self.assertTrue(any(w["kind"] == "number_removed" and "12" in w["numbers"] for w in warnings))
+        self.assertTrue(any("12" in mosala.warning_text(w) for w in warnings))
+
+    def test_no_name_means_no_empty_heading(self):
+        md, _, _ = mosala.make_cv(self.story, "fr", {}, fake_chat)
+        self.assertFalse(md.lstrip().startswith("#\n"))
+        self.assertFalse(md.startswith("# \n"))
 
     def test_broken_model_output_gives_a_warning_not_a_crash(self):
         md, _, warnings = mosala.make_cv(self.story, "en", {"name": "X"}, lambda s, u, j: "oops")
         self.assertIn("# X", md)
-        self.assertTrue(warnings)
+        self.assertEqual(warnings[-1]["kind"], "no_details")
 
     def test_html_is_printable_and_escaped(self):
         page = mosala.render_html("# A <b>\n## Skills\n- one\n- two", "A")
