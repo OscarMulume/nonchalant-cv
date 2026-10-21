@@ -29,7 +29,14 @@ French, English, Spanish, Portuguese, Arabic, Mandarin, Hindi, Bengali, Russian 
    ```
    ollama pull qwen2.5:3b
    ```
-3. Try the samples:
+3. **Open the web page** (easiest):
+   ```
+   python app.py
+   ```
+   Your browser opens `http://localhost:8000`. On Windows you can also double-click `start_mosala.bat`.
+   The page works in French, English, Swahili and Lingala, and nothing leaves your computer: the page
+   talks only to a small server on your machine, which talks only to Ollama.
+4. Or use the command line with the samples:
    ```
    python mosala.py cv --story samples/story_ln.txt --to fr --name "Jean Mbuyi" --city Kinshasa
    python mosala.py cv --story samples/story_sw.txt --to en --name "Amina Bahati" --city Goma
