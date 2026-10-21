@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
+import time
 import sys
 import threading
 import urllib.request
@@ -17,6 +19,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import africa
 import mosala
 import nonchalant_cv as core
 
@@ -71,7 +74,118 @@ def handle_match(data: dict, chat) -> dict:
     return {"markdown": core.run(cv, offer, chat)}
 
 
-ROUTES = {"/api/cv": handle_cv, "/api/offer": handle_offer, "/api/match": handle_match, "/api/alert": handle_alert}
+TIER_RANK = {"good": 0, "medium": 1, "experimental": 2}
+
+
+def pair_tier(a: str, b: str) -> str:
+    """A translation is only as reliable as the weaker of its two languages."""
+    return max(mosala.LANG_INFO[a]["tier"], mosala.LANG_INFO[b]["tier"], key=TIER_RANK.get)
+
+
+def handle_talk(data: dict, chat) -> dict:
+    """One turn of a face-to-face conversation on a single device."""
+    text = (data.get("text") or "").strip()
+    src, dst = data.get("from"), data.get("to")
+    if not text or src not in mosala.LANG_INFO or dst not in mosala.LANG_INFO:
+        return {"error": "empty_talk"}
+    if len(text) > 2000:
+        return {"error": "too_long"}
+    result = mosala.interpret(text, src, dst, chat, check=bool(data.get("check")))
+    return {**result, "tier": pair_tier(src, dst)}
+
+
+# ---- Rooms: two or more phones talking, each person reads and hears in their own language ----
+# Kept in memory only: nothing is written to disk, and a room disappears after ROOM_IDLE seconds.
+ROOMS: dict[str, dict] = {}
+ROOMS_LOCK = threading.Lock()
+ROOM_IDLE = 6 * 3600
+MAX_ROOMS, MAX_MESSAGES, MAX_PEOPLE = 50, 300, 8
+
+
+def _clean_rooms(now: float) -> None:
+    for code in [c for c, r in ROOMS.items() if now - r["active"] > ROOM_IDLE]:
+        del ROOMS[code]
+
+
+def handle_room_join(data: dict, chat) -> dict:
+    name = (data.get("name") or "").strip()[:40] or "?"
+    lang = data.get("lang")
+    if lang not in mosala.LANG_INFO:
+        return {"error": "empty_room"}
+    code = (data.get("room") or "").strip()
+    now = time.time()
+    with ROOMS_LOCK:
+        _clean_rooms(now)
+        if code:
+            room = ROOMS.get(code)
+            if not room:
+                return {"error": "no_room"}
+            if len(room["people"]) >= MAX_PEOPLE:
+                return {"error": "room_full"}
+        else:
+            if len(ROOMS) >= MAX_ROOMS:
+                return {"error": "too_many_rooms"}
+            code = str(secrets.randbelow(9000) + 1000)
+            while code in ROOMS:
+                code = str(secrets.randbelow(9000) + 1000)
+            room = ROOMS[code] = {"people": {}, "messages": [], "active": now}
+        pid = secrets.token_urlsafe(8)
+        room["people"][pid] = {"name": name, "lang": lang}
+        room["active"] = now
+    return {"room": code, "pid": pid}
+
+
+def _room_and_person(data: dict):
+    room = ROOMS.get((data.get("room") or "").strip())
+    if not room or data.get("pid") not in room["people"]:
+        return None, None
+    return room, room["people"][data["pid"]]
+
+
+def handle_room_send(data: dict, chat) -> dict:
+    text = (data.get("text") or "").strip()[:2000]
+    if not text:
+        return {"error": "empty_room"}
+    with ROOMS_LOCK:
+        room, me = _room_and_person(data)
+        if not room:
+            return {"error": "no_room"}
+        msg = {"id": len(room["messages"]) + 1, "pid": data["pid"], "name": me["name"],
+               "lang": me["lang"], "text": text, "tr": {}}
+        room["messages"].append(msg)
+        del room["messages"][:-MAX_MESSAGES]
+        room["active"] = time.time()
+    return {"id": msg["id"]}
+
+
+def handle_room_poll(data: dict, chat) -> dict:
+    with ROOMS_LOCK:
+        room, me = _room_and_person(data)
+        if not room:
+            return {"error": "no_room"}
+        since = int(data.get("since") or 0)
+        new = [m for m in room["messages"] if m["id"] > since][:10]
+        people = [{"name": p["name"], "native": mosala.LANG_INFO[p["lang"]]["native"]} for p in room["people"].values()]
+        lang = me["lang"]
+    out = []
+    for m in new:
+        if m["lang"] == lang:
+            text, missing = m["text"], []
+        else:
+            if lang not in m["tr"]:  # translate once per language, outside the lock (it takes seconds)
+                r = mosala.interpret(m["text"], m["lang"], lang, chat)
+                m["tr"][lang] = (r["text"], r["missing_numbers"])
+            text, missing = m["tr"][lang]
+        out.append({"id": m["id"], "mine": m["pid"] == data["pid"], "name": m["name"],
+                    "from": mosala.LANG_INFO[m["lang"]]["native"], "original": m["text"],
+                    "text": text, "missing_numbers": missing,
+                    "tier": pair_tier(m["lang"], lang)})
+    return {"messages": out, "people": people, "lang": lang}
+
+
+ROUTES = {"/api/cv": handle_cv, "/api/offer": handle_offer, "/api/match": handle_match, "/api/alert": handle_alert,
+          "/api/talk": handle_talk, "/api/room/join": handle_room_join, "/api/room/send": handle_room_send,
+          "/api/room/poll": handle_room_poll}
 
 
 def lan_address() -> str:
@@ -109,6 +223,8 @@ class Handler(BaseHTTPRequestHandler):
                                    "groups": [{"id": g, "langs": [{"code": c, "native": n, "where": w, "tier": t}
                                                                   for c, _, n, w, t in items]}
                                               for g, items in mosala.LANGUAGE_GROUPS],
+                                   "countries": [{"code": c, "fr": fr, "en": en, "langs": langs}
+                                                 for c, fr, en, langs in africa.COUNTRIES],
                                    "cv_languages": sorted(mosala.CV_LABELS)})
         path = "index.html" if self.path in ("/", "/index.html") else None
         if not path:

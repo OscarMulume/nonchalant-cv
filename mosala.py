@@ -27,6 +27,7 @@ import re
 import sys
 from pathlib import Path
 
+import africa
 import nonchalant_cv as core
 
 DEFAULT_MODEL = "qwen2.5:3b"
@@ -88,6 +89,11 @@ LANGUAGE_GROUPS = [
         ("ru", "Russian", "Русский", "", "good"), ("ur", "Urdu", "اردو", "", "good"),
     ]),
 ]
+# Every other language from the country-by-country catalogue (africa.py).
+LANGUAGE_GROUPS.append(("africa_more", [
+    (code, name, native, ", ".join(africa.countries_of(code)), tier)
+    for code, (name, native, tier) in africa.LANGS.items()
+]))
 LANG_INFO = {code: {"name": name, "native": native, "where": where, "tier": tier, "group": group}
              for group, items in LANGUAGE_GROUPS for code, name, native, where, tier in items}
 LANGUAGES = {code: info["name"] for code, info in LANG_INFO.items()}
@@ -374,6 +380,34 @@ def translate_to_many(message: str, langs: list[str], chat) -> list[dict]:
         out.append({"lang": lang, "native": LANG_INFO[lang]["native"], "text": text,
                     "tier": LANG_INFO[lang]["tier"], "missing_numbers": lost})
     return out
+
+
+def interpret(text: str, src: str, dst: str, chat, check: bool = False) -> dict:
+    """Translate one turn of a spoken conversation between two people.
+
+    With check=True the translation is also translated back into the speaker's language, so the
+    speaker can see whether the meaning survived (useful for languages marked experimental).
+    """
+    text = text.strip()
+    if src == dst:
+        return {"text": text, "back": None, "missing_numbers": []}
+    system = (
+        f"You are an interpreter helping two people talk face to face. Translate what the speaker said "
+        f"from {language_for_prompt(src)} into {language_for_prompt(dst)}. Use simple, natural spoken "
+        "words, as people really talk. Keep names, numbers, dates, prices and places exactly. Do not answer "
+        "the speaker, do not add or explain anything. If a word has no common equivalent, keep the "
+        "original word. Reply with the translation only."
+    )
+    out = chat(system, text, False).strip().strip('"')
+    back = None
+    if check:
+        back_system = (
+            f"Translate this from {language_for_prompt(dst)} into {language_for_prompt(src)}, word for "
+            "word as far as possible, so the speaker can check the meaning. Reply with the translation only."
+        )
+        back = chat(back_system, out, False).strip().strip('"')
+    lost = sorted(set(NUMBER.findall(text)) - set(NUMBER.findall(out)), key=int)
+    return {"text": out, "back": back, "missing_numbers": lost}
 
 
 def cmd_cv(a, chat) -> int:

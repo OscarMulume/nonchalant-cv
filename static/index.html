@@ -79,6 +79,33 @@
   .progress { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
   .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
   .note { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 14px; padding: 3px; gap: 2px; margin-bottom: 14px; flex-wrap: wrap; }
+  .seg button { border: 0; background: none; color: var(--ink); font: 600 .95rem var(--body); padding: 8px 14px; border-radius: 11px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .talk { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .talk { grid-template-columns: 1fr; } }
+  .side { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--paper); display: flex; flex-direction: column; min-height: 360px; }
+  .side.flip { transform: rotate(180deg); }
+  .side h3 { margin: 0 0 4px; font: 700 1.05rem var(--display); }
+  .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pick label { margin: 6px 0 4px; font-size: .85rem; }
+  .pick select { background: var(--card); padding: 8px 10px; }
+  .log { flex: 1; overflow-y: auto; max-height: 320px; display: flex; flex-direction: column; gap: 8px; padding: 10px 2px; }
+  .bubble { max-width: 88%; padding: 9px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); overflow-wrap: anywhere; }
+  .bubble.mine { align-self: flex-end; background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+  .bubble.big { font-size: 1.15rem; }
+  .bubble small { display: block; color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  .bubble .warn { margin: 6px 0 0; padding: 6px 10px; font-size: .85rem; }
+  .say { display: flex; gap: 8px; align-items: stretch; }
+  .say input { flex: 1; background: var(--card); }
+  .say .btn { padding: 10px 14px; }
+  @media (max-width: 520px) { .say { flex-wrap: wrap; } .say input { flex: 1 1 100%; order: -1; } .say .btn { flex: 1; } }
+  .mic-big { font-size: 1.05rem; }
+  .mic-big.on { background: var(--sun); color: #2a2000; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; }
+  .opts label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+  .opts input { width: auto; }
+  .code { font: 700 2.2rem/1 var(--mono); letter-spacing: .15em; color: var(--accent); }
   footer { margin-top: 22px; color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
   footer select { width: auto; padding: 4px 8px; }
 </style>
@@ -103,6 +130,7 @@
     <button role="tab" data-tab="offer" aria-selected="false" data-t="tab_offer"></button>
     <button role="tab" data-tab="match" aria-selected="false" data-t="tab_match"></button>
     <button role="tab" data-tab="alert" aria-selected="false" data-t="tab_alert"></button>
+    <button role="tab" data-tab="talk" aria-selected="false" data-t="tab_talk"></button>
   </nav>
 
   <!-- CV from a story -->
@@ -180,11 +208,65 @@
     <textarea id="alert-msg"></textarea>
     <label data-t="alert_langs"></label>
     <div class="chips" id="alert-langs"></div>
+    <select id="alert-country" style="margin-top:10px;max-width:340px"></select>
     <div class="actions">
       <button class="btn" id="go-alert" data-t="btn_alert"></button>
       <span class="working" id="w-alert"><span class="dot"></span><span data-t="working"></span></span>
     </div>
     <div class="result" id="r-alert"></div>
+  </section>
+
+  <!-- Conversation: two people, two languages, by voice -->
+  <section class="panel" id="panel-talk" hidden>
+    <p class="lead" data-t="talk_lead"></p>
+    <div class="seg" role="group">
+      <button type="button" data-mode="here" aria-pressed="true" data-t="talk_here"></button>
+      <button type="button" data-mode="room" aria-pressed="false" data-t="talk_room"></button>
+    </div>
+
+    <div id="mode-here">
+      <div class="talk">
+        <div class="side" id="side-a"></div>
+        <div class="side" id="side-b"></div>
+      </div>
+      <div class="opts">
+        <label><input type="checkbox" id="opt-speak" checked> <span data-t="auto_speak"></span></label>
+        <label><input type="checkbox" id="opt-check"> <span data-t="check_meaning"></span></label>
+        <label><input type="checkbox" id="opt-flip"> <span data-t="flip"></span></label>
+      </div>
+      <p class="note" data-t="talk_note"></p>
+    </div>
+
+    <div id="mode-room" hidden>
+      <div id="room-join">
+        <div class="row">
+          <div><label for="room-name" data-t="name"></label><input id="room-name" autocomplete="given-name"></div>
+          <div><label for="room-code" data-t="room_code"></label><input id="room-code" inputmode="numeric" maxlength="4" placeholder="1234"></div>
+        </div>
+        <div class="pick" id="room-pick"></div>
+        <div class="actions">
+          <button class="btn" id="room-create" type="button" data-t="room_create"></button>
+          <button class="btn ghost" id="room-enter" type="button" data-t="room_join"></button>
+        </div>
+        <p class="note" data-t="room_how"></p>
+      </div>
+      <div id="room-live" hidden>
+        <p style="margin:0"><span data-t="room_code"></span> : <span class="code" id="room-show"></span></p>
+        <p class="note" id="room-people"></p>
+        <div class="side" style="margin-top:10px">
+          <div class="log" id="room-log" aria-live="polite"></div>
+          <div class="say">
+            <button class="btn mic-big" id="room-mic" type="button" data-t="say"></button>
+            <input id="room-text" data-tp="type_here">
+            <button class="btn ghost" id="room-send" type="button" data-t="send"></button>
+          </div>
+        </div>
+        <div class="opts">
+          <label><input type="checkbox" id="room-speak" checked> <span data-t="auto_speak"></span></label>
+          <button class="linkish" id="room-leave" type="button" data-t="room_leave"></button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <footer>
@@ -196,7 +278,8 @@
 <script>
 // Interface text. Lingala and Swahili lines should be reviewed by native speakers.
 const T = {
-  fr: { tab_alert: "Message communautaire", alert_lead: "Pour les ONG, centres de santé et autorités locales : écrivez un message (santé, sécurité, information) et traduisez-le dans les langues de la communauté. Chaque traduction doit être relue par un locuteur avant diffusion.", alert_label: "Le message, en français ou en anglais", alert_langs: "Langues", btn_alert: "Traduire", reviewed: "Relu et validé par un locuteur", w_alert_numbers: "Chiffres absents de cette traduction : {numbers}. Vérifiez avant de diffuser.", mic: "Dicter", mic_stop: "Arrêter la dictée", mic_note: "La dictée passe par le service en ligne du navigateur ; elle marche en français, anglais et swahili.", mic_unsupported: "La dictée n'est pas disponible ici. Utilisez Chrome ou Edge, en français, anglais ou swahili.", listen: "Écouter", no_voice: "Pas de voix installée pour cette langue sur cet ordinateur.", titles: "Titres de poste que cherchent les recruteurs", batch_toggle: "Mode centre de formation / ONG : créer plusieurs CV d'un coup", batch_lead: "Chargez un fichier CSV avec les colonnes name, city, phone, email, story, cv_lang (une ligne par personne). Mosala crée les CV un par un ; comptez 1 à 3 minutes par CV.", batch_template: "Télécharger le modèle CSV", batch_run: "Créer tous les CV", batch_progress: "CV {i} sur {n}…", batch_done: "Terminé : {n} CV créés. Relisez-les avec chaque personne.", batch_print: "Tout imprimer / PDF", batch_empty: "Choisissez d'abord un fichier CSV avec au moins une ligne.",
+  fr: { alert_country: "+ Ajouter les langues d'un pays…", tab_talk: "Conversation", talk_lead: "Deux personnes, deux langues. Chacune parle ou écrit dans sa langue ; Mosala traduit et lit la réponse à voix haute dans la langue de l'autre.", talk_here: "Sur ce téléphone (face à face)", talk_room: "Sur deux téléphones", person_a: "Personne A", person_b: "Personne B", country: "Pays", all_countries: "Toutes les langues", language: "Langue", say: "🎤 Parler", say_stop: "■ Arrêter", type_here: "Ou écrivez ici…", send: "Envoyer", flip: "Retourner le côté B (téléphone posé entre vous)", auto_speak: "Lire les traductions à voix haute", check_meaning: "Vérifier le sens (retraduction)", understood_as: "Compris comme :", no_voice_show: "Pas de voix pour cette langue sur cet appareil : montrez l'écran.", talk_numbers: "Chiffres absents de la traduction : {numbers}.", translating: "Traduction…", talk_note: "La dictée vocale passe par le service en ligne du navigateur et ne reconnaît que certaines langues ; sinon, écrivez. Les voix dépendent de votre appareil. Pour une langue marquée « expérimentale », vérifiez le sens des choses importantes.", dictation_off: "La dictée n'est pas disponible pour cette langue ici. Écrivez votre message.", room_code: "Code du salon", room_create: "Créer un salon", room_join: "Rejoindre avec le code", room_how: "Lancez Mosala avec « python app.py --lan », puis ouvrez sur l'autre téléphone l'adresse affichée dans le terminal (même Wi-Fi). Chacun choisit sa langue ; chacun lit et entend les messages dans la sienne.", room_people: "Dans le salon : {people}", room_leave: "Quitter le salon", no_room: "Ce salon n'existe pas (ou a expiré). Vérifiez le code.", room_full: "Ce salon est plein.", g_africa_more: "Langues africaines, par pays",
+    tab_alert: "Message communautaire", alert_lead: "Pour les ONG, centres de santé et autorités locales : écrivez un message (santé, sécurité, information) et traduisez-le dans les langues de la communauté. Chaque traduction doit être relue par un locuteur avant diffusion.", alert_label: "Le message, en français ou en anglais", alert_langs: "Langues", btn_alert: "Traduire", reviewed: "Relu et validé par un locuteur", w_alert_numbers: "Chiffres absents de cette traduction : {numbers}. Vérifiez avant de diffuser.", mic: "Dicter", mic_stop: "Arrêter la dictée", mic_note: "La dictée passe par le service en ligne du navigateur ; elle marche en français, anglais et swahili.", mic_unsupported: "La dictée n'est pas disponible ici. Utilisez Chrome ou Edge, en français, anglais ou swahili.", listen: "Écouter", no_voice: "Pas de voix installée pour cette langue sur cet ordinateur.", titles: "Titres de poste que cherchent les recruteurs", batch_toggle: "Mode centre de formation / ONG : créer plusieurs CV d'un coup", batch_lead: "Chargez un fichier CSV avec les colonnes name, city, phone, email, story, cv_lang (une ligne par personne). Mosala crée les CV un par un ; comptez 1 à 3 minutes par CV.", batch_template: "Télécharger le modèle CSV", batch_run: "Créer tous les CV", batch_progress: "CV {i} sur {n}…", batch_done: "Terminé : {n} CV créés. Relisez-les avec chaque personne.", batch_print: "Tout imprimer / PDF", batch_empty: "Choisissez d'abord un fichier CSV avec au moins une ligne.",
     w_number_removed: "Retiré : un détail avec un chiffre que vous n'avez pas dit ({numbers}) : « {text} »", w_no_details: "Mosala n'a pas trouvé de détails sur votre travail. Ajoutez ce que vous faites et où.",
     guided_toggle: "Vous ne savez pas quoi écrire ? Répondez à quelques questions", guided_hide: "Écrire librement",
     q: ["Quel est votre métier ?", "Depuis combien d'années le faites-vous ?", "Où avez-vous travaillé (atelier, entreprise, à votre compte) ?", "Que savez-vous faire ? Citez vos tâches.", "Avec quels outils ou machines travaillez-vous ?", "Une réalisation dont vous êtes fier (avec un chiffre si possible) ?", "Quelles langues parlez-vous ?", "Études ou formations, même courtes ?"],
@@ -215,7 +298,8 @@ const T = {
     private: "Tout reste sur votre ordinateur.", model: "Modèle",
     ollama_down: "Ollama ne répond pas. Ouvrez l'application Ollama, puis rechargez cette page.", empty: "Remplissez le champ avant de lancer.",
     failed: "Ça n'a pas marché. Réessayez ; si ça recommence, essayez un autre modèle." },
-  en: { tab_alert: "Community message", alert_lead: "For NGOs, health centres and local authorities: write a message (health, safety, public information) and translate it into the community's languages. Every translation must be checked by a speaker before it is shared.", alert_label: "The message, in French or English", alert_langs: "Languages", btn_alert: "Translate", reviewed: "Checked by a speaker", w_alert_numbers: "Numbers missing from this translation: {numbers}. Check before sharing.", mic: "Dictate", mic_stop: "Stop dictation", mic_note: "Dictation uses the browser's online service; it works in French, English and Swahili.", mic_unsupported: "Dictation is not available here. Use Chrome or Edge, in French, English or Swahili.", listen: "Listen", no_voice: "No voice installed for this language on this computer.", titles: "Job titles recruiters search for", batch_toggle: "Training centre / NGO mode: create many CVs at once", batch_lead: "Load a CSV file with the columns name, city, phone, email, story, cv_lang (one row per person). Mosala writes the CVs one by one; allow 1 to 3 minutes per CV.", batch_template: "Download the CSV template", batch_run: "Create all CVs", batch_progress: "CV {i} of {n}…", batch_done: "Done: {n} CVs created. Review them with each person.", batch_print: "Print all / PDF", batch_empty: "First choose a CSV file with at least one row.",
+  en: { alert_country: "+ Add a country's languages…", tab_talk: "Conversation", talk_lead: "Two people, two languages. Each speaks or types in their own language; Mosala translates and reads the reply aloud in the other person's language.", talk_here: "On this phone (face to face)", talk_room: "On two phones", person_a: "Person A", person_b: "Person B", country: "Country", all_countries: "All languages", language: "Language", say: "🎤 Speak", say_stop: "■ Stop", type_here: "Or type here…", send: "Send", flip: "Turn side B upside down (phone lying between you)", auto_speak: "Read translations aloud", check_meaning: "Check the meaning (back-translation)", understood_as: "Understood as:", no_voice_show: "No voice for this language on this device: show the screen.", talk_numbers: "Numbers missing from the translation: {numbers}.", translating: "Translating…", talk_note: "Voice dictation uses the browser's online service and only recognises some languages; otherwise, type. Voices depend on your device. For a language marked \"experimental\", check the meaning of important things.", dictation_off: "Dictation is not available for this language here. Type your message.", room_code: "Room code", room_create: "Create a room", room_join: "Join with the code", room_how: "Start Mosala with \"python app.py --lan\", then open the address shown in the terminal on the other phone (same Wi-Fi). Everyone picks their language; everyone reads and hears messages in their own.", room_people: "In the room: {people}", room_leave: "Leave the room", no_room: "This room does not exist (or has expired). Check the code.", room_full: "This room is full.", g_africa_more: "African languages, by country",
+    tab_alert: "Community message", alert_lead: "For NGOs, health centres and local authorities: write a message (health, safety, public information) and translate it into the community's languages. Every translation must be checked by a speaker before it is shared.", alert_label: "The message, in French or English", alert_langs: "Languages", btn_alert: "Translate", reviewed: "Checked by a speaker", w_alert_numbers: "Numbers missing from this translation: {numbers}. Check before sharing.", mic: "Dictate", mic_stop: "Stop dictation", mic_note: "Dictation uses the browser's online service; it works in French, English and Swahili.", mic_unsupported: "Dictation is not available here. Use Chrome or Edge, in French, English or Swahili.", listen: "Listen", no_voice: "No voice installed for this language on this computer.", titles: "Job titles recruiters search for", batch_toggle: "Training centre / NGO mode: create many CVs at once", batch_lead: "Load a CSV file with the columns name, city, phone, email, story, cv_lang (one row per person). Mosala writes the CVs one by one; allow 1 to 3 minutes per CV.", batch_template: "Download the CSV template", batch_run: "Create all CVs", batch_progress: "CV {i} of {n}…", batch_done: "Done: {n} CVs created. Review them with each person.", batch_print: "Print all / PDF", batch_empty: "First choose a CSV file with at least one row.",
     w_number_removed: "Removed a detail with a number you did not say ({numbers}): \"{text}\"", w_no_details: "Mosala could not find work details. Add what you do and where.",
     guided_toggle: "Not sure what to write? Answer a few questions", guided_hide: "Write freely",
     q: ["What is your trade?", "For how many years have you done it?", "Where did you work (workshop, company, self-employed)?", "What can you do? List your tasks.", "Which tools or machines do you use?", "One thing you are proud of (with a number if you can)?", "Which languages do you speak?", "Studies or training, even short ones?"],
@@ -234,7 +318,8 @@ const T = {
     private: "Everything stays on your computer.", model: "Model",
     ollama_down: "Ollama is not answering. Open the Ollama app, then reload this page.", empty: "Fill in the field first.",
     failed: "That did not work. Try again; if it happens again, try another model." },
-  sw: { tab_alert: "Ujumbe kwa jamii", alert_lead: "Kwa NGO, vituo vya afya na serikali za mitaa: andika ujumbe (afya, usalama, taarifa) na uutafsiri kwa lugha za jamii. Kila tafsiri lazima ihakikiwe na mzungumzaji kabla ya kusambazwa.", alert_label: "Ujumbe, kwa Kifaransa au Kiingereza", alert_langs: "Lugha", btn_alert: "Tafsiri", reviewed: "Imehakikiwa na mzungumzaji", w_alert_numbers: "Namba zinazokosekana kwenye tafsiri hii: {numbers}. Hakiki kabla ya kusambaza.", mic: "Ongea", mic_stop: "Simamisha", mic_note: "Kuongea kunatumia huduma ya mtandaoni ya kivinjari; kunafanya kazi kwa Kifaransa, Kiingereza na Kiswahili.", mic_unsupported: "Kuongea hakupatikani hapa. Tumia Chrome au Edge, kwa Kifaransa, Kiingereza au Kiswahili.", listen: "Sikiliza", no_voice: "Hakuna sauti iliyowekwa kwa lugha hii kwenye kompyuta hii.", titles: "Vyeo vya kazi wanavyotafuta waajiri", batch_toggle: "Kituo cha mafunzo / NGO: tengeneza CV nyingi kwa mara moja", batch_lead: "Pakia faili ya CSV yenye safu name, city, phone, email, story, cv_lang (mstari mmoja kwa kila mtu). Mosala itaandika CV moja baada ya nyingine; dakika 1 hadi 3 kwa kila CV.", batch_template: "Pakua kiolezo cha CSV", batch_run: "Tengeneza CV zote", batch_progress: "CV {i} kati ya {n}…", batch_done: "Imekamilika: CV {n} zimetengenezwa. Zihakiki pamoja na kila mtu.", batch_print: "Chapisha zote / PDF", batch_empty: "Kwanza chagua faili ya CSV yenye angalau mstari mmoja.",
+  sw: { alert_country: "+ Ongeza lugha za nchi…", tab_talk: "Mazungumzo", talk_lead: "Watu wawili, lugha mbili. Kila mmoja anaongea au anaandika kwa lugha yake; Mosala inatafsiri na kusoma jibu kwa sauti kwa lugha ya mwingine.", talk_here: "Kwenye simu hii (ana kwa ana)", talk_room: "Kwenye simu mbili", person_a: "Mtu A", person_b: "Mtu B", country: "Nchi", all_countries: "Lugha zote", language: "Lugha", say: "🎤 Ongea", say_stop: "■ Simama", type_here: "Au andika hapa…", send: "Tuma", flip: "Geuza upande B (simu iko katikati yenu)", auto_speak: "Soma tafsiri kwa sauti", check_meaning: "Hakiki maana (tafsiri ya kurudi)", understood_as: "Imeeleweka kama:", no_voice_show: "Hakuna sauti ya lugha hii kwenye kifaa hiki: onyesha skrini.", talk_numbers: "Namba zinazokosekana kwenye tafsiri: {numbers}.", translating: "Inatafsiri…", talk_note: "Kuongea kunatumia huduma ya mtandaoni ya kivinjari na kunatambua lugha chache tu; vinginevyo, andika. Sauti zinategemea kifaa chako. Kwa lugha ya \"majaribio\", hakiki maana ya mambo muhimu.", dictation_off: "Kuongea hakupatikani kwa lugha hii hapa. Andika ujumbe wako.", room_code: "Namba ya chumba", room_create: "Fungua chumba", room_join: "Ingia kwa namba", room_how: "Washa Mosala kwa \"python app.py --lan\", kisha fungua anwani inayoonyeshwa kwenye simu nyingine (Wi-Fi moja). Kila mtu anachagua lugha yake; kila mtu anasoma na kusikia ujumbe kwa lugha yake.", room_people: "Ndani ya chumba: {people}", room_leave: "Toka chumbani", no_room: "Chumba hiki hakipo (au kimeisha muda). Hakiki namba.", room_full: "Chumba hiki kimejaa.", g_africa_more: "Lugha za Afrika, kwa nchi",
+    tab_alert: "Ujumbe kwa jamii", alert_lead: "Kwa NGO, vituo vya afya na serikali za mitaa: andika ujumbe (afya, usalama, taarifa) na uutafsiri kwa lugha za jamii. Kila tafsiri lazima ihakikiwe na mzungumzaji kabla ya kusambazwa.", alert_label: "Ujumbe, kwa Kifaransa au Kiingereza", alert_langs: "Lugha", btn_alert: "Tafsiri", reviewed: "Imehakikiwa na mzungumzaji", w_alert_numbers: "Namba zinazokosekana kwenye tafsiri hii: {numbers}. Hakiki kabla ya kusambaza.", mic: "Ongea", mic_stop: "Simamisha", mic_note: "Kuongea kunatumia huduma ya mtandaoni ya kivinjari; kunafanya kazi kwa Kifaransa, Kiingereza na Kiswahili.", mic_unsupported: "Kuongea hakupatikani hapa. Tumia Chrome au Edge, kwa Kifaransa, Kiingereza au Kiswahili.", listen: "Sikiliza", no_voice: "Hakuna sauti iliyowekwa kwa lugha hii kwenye kompyuta hii.", titles: "Vyeo vya kazi wanavyotafuta waajiri", batch_toggle: "Kituo cha mafunzo / NGO: tengeneza CV nyingi kwa mara moja", batch_lead: "Pakia faili ya CSV yenye safu name, city, phone, email, story, cv_lang (mstari mmoja kwa kila mtu). Mosala itaandika CV moja baada ya nyingine; dakika 1 hadi 3 kwa kila CV.", batch_template: "Pakua kiolezo cha CSV", batch_run: "Tengeneza CV zote", batch_progress: "CV {i} kati ya {n}…", batch_done: "Imekamilika: CV {n} zimetengenezwa. Zihakiki pamoja na kila mtu.", batch_print: "Chapisha zote / PDF", batch_empty: "Kwanza chagua faili ya CSV yenye angalau mstari mmoja.",
     w_number_removed: "Imeondolewa: jambo lenye namba ambayo hukusema ({numbers}): \"{text}\"", w_no_details: "Mosala haikupata maelezo ya kazi yako. Ongeza unachofanya na wapi.",
     guided_toggle: "Hujui uandike nini? Jibu maswali machache", guided_hide: "Andika kwa uhuru",
     q: ["Kazi yako ni ipi?", "Umefanya kazi hii kwa miaka mingapi?", "Umefanya kazi wapi (karakana, kampuni, kujiajiri)?", "Unajua kufanya nini? Taja kazi zako.", "Unatumia vifaa au mashine gani?", "Jambo moja unalojivunia (na idadi ikiwezekana)?", "Unazungumza lugha gani?", "Masomo au mafunzo, hata mafupi?"],
@@ -253,7 +338,8 @@ const T = {
     private: "Kila kitu kinabaki kwenye kompyuta yako.", model: "Modeli",
     ollama_down: "Ollama haijibu. Fungua programu ya Ollama, kisha pakia upya ukurasa huu.", empty: "Jaza sehemu hii kwanza.",
     failed: "Haikufanikiwa. Jaribu tena; ikitokea tena, jaribu modeli nyingine." },
-  ln: { tab_alert: "Nsango mpo na bato", alert_lead: "Mpo na ba ONG, ba centre de santé mpe bakonzi ya quartier: koma nsango (bokolongono, libateli, sango) mpe bobongola yango na minoko ya bato. Moto oyo alobaka monoko yango asengeli kotala traduction nyonso liboso ya kopanza yango.", alert_label: "Nsango, na Français to na Anglais", alert_langs: "Minoko", btn_alert: "Bongola", reviewed: "Moto oyo alobaka monoko yango atali yango", w_alert_numbers: "Mitango oyo ezangi na traduction oyo: {numbers}. Tala malamu liboso ya kopanza.", mic: "Loba", mic_stop: "Tika koloba", mic_note: "Koloba esalaka na service ya internet ya navigateur; esalaka na Français, Anglais mpe Swahili.", mic_unsupported: "Koloba ezali awa te. Salela Chrome to Edge, na Français, Anglais to Swahili.", listen: "Yoka", no_voice: "Mongongo ya monoko oyo ezali te na ordinateur oyo.", titles: "Bankombo ya mosala oyo bapesi mosala balukaka", batch_toggle: "Centre ya formation / ONG: sala ba CV mingi mbala moko", batch_lead: "Tia fichier CSV na ba colonnes name, city, phone, email, story, cv_lang (molongo moko mpo na moto moko). Mosala ekosala ba CV moko na moko; miniti 1 tii 3 mpo na CV moko.", batch_template: "Kozwa modèle ya CSV", batch_run: "Sala ba CV nyonso", batch_progress: "CV {i} na kati ya {n}…", batch_done: "Esili: ba CV {n} esalami. Tala yango elongo na moto na moto.", batch_print: "Kobimisa nyonso / PDF", batch_empty: "Liboso, pona fichier CSV oyo ezali na molongo moko to koleka.",
+  ln: { alert_country: "+ Bakisa minoko ya ekolo…", tab_talk: "Lisolo", talk_lead: "Bato mibale, minoko mibale. Moko na moko aloba to akoma na monoko na ye; Mosala ebongoli mpe etangi eyano na mongongo na monoko ya mosusu.", talk_here: "Na telefone oyo (miso na miso)", talk_room: "Na ba telefone mibale", person_a: "Moto A", person_b: "Moto B", country: "Ekolo", all_countries: "Minoko nyonso", language: "Monoko", say: "🎤 Loba", say_stop: "■ Tika", type_here: "To koma awa…", send: "Tinda", flip: "Balola ngambo B (telefone ezali kati na bino)", auto_speak: "Tanga ba traduction na mongongo", check_meaning: "Tala ndimbola (kozongisa traduction)", understood_as: "Esosolami boye:", no_voice_show: "Mongongo ya monoko oyo ezali te na appareil oyo: lakisa écran.", talk_numbers: "Mitango oyo ezangi na traduction: {numbers}.", translating: "Ezali kobongola…", talk_note: "Koloba esalaka na service ya internet ya navigateur mpe eyebi kaka minoko mosusu; soki te, koma. Mingongo etali appareil na yo. Mpo na monoko ya \"komeka\", tala malamu ndimbola ya makambo ya ntina.", dictation_off: "Koloba ezali te mpo na monoko oyo awa. Koma nsango na yo.", room_code: "Code ya salon", room_create: "Fungola salon", room_join: "Kota na code", room_how: "Bandisa Mosala na \"python app.py --lan\", sima fungola adresse oyo terminal elakisi na telefone mosusu (Wi-Fi moko). Moto na moto apona monoko na ye; moto na moto atangi mpe ayoki ba nsango na monoko na ye.", room_people: "Na salon: {people}", room_leave: "Bima na salon", no_room: "Salon oyo ezali te (to ntango na yango esili). Tala code.", room_full: "Salon oyo etondi.", g_africa_more: "Minoko ya Afrika, ekolo na ekolo",
+    tab_alert: "Nsango mpo na bato", alert_lead: "Mpo na ba ONG, ba centre de santé mpe bakonzi ya quartier: koma nsango (bokolongono, libateli, sango) mpe bobongola yango na minoko ya bato. Moto oyo alobaka monoko yango asengeli kotala traduction nyonso liboso ya kopanza yango.", alert_label: "Nsango, na Français to na Anglais", alert_langs: "Minoko", btn_alert: "Bongola", reviewed: "Moto oyo alobaka monoko yango atali yango", w_alert_numbers: "Mitango oyo ezangi na traduction oyo: {numbers}. Tala malamu liboso ya kopanza.", mic: "Loba", mic_stop: "Tika koloba", mic_note: "Koloba esalaka na service ya internet ya navigateur; esalaka na Français, Anglais mpe Swahili.", mic_unsupported: "Koloba ezali awa te. Salela Chrome to Edge, na Français, Anglais to Swahili.", listen: "Yoka", no_voice: "Mongongo ya monoko oyo ezali te na ordinateur oyo.", titles: "Bankombo ya mosala oyo bapesi mosala balukaka", batch_toggle: "Centre ya formation / ONG: sala ba CV mingi mbala moko", batch_lead: "Tia fichier CSV na ba colonnes name, city, phone, email, story, cv_lang (molongo moko mpo na moto moko). Mosala ekosala ba CV moko na moko; miniti 1 tii 3 mpo na CV moko.", batch_template: "Kozwa modèle ya CSV", batch_run: "Sala ba CV nyonso", batch_progress: "CV {i} na kati ya {n}…", batch_done: "Esili: ba CV {n} esalami. Tala yango elongo na moto na moto.", batch_print: "Kobimisa nyonso / PDF", batch_empty: "Liboso, pona fichier CSV oyo ezali na molongo moko to koleka.",
     w_number_removed: "Elongolami: likambo na motango oyo olobaki te ({numbers}): \"{text}\"", w_no_details: "Mosala ezwi makambo ya mosala na yo te. Bakisa nini osalaka mpe wapi.",
     guided_toggle: "Oyebi te nini ya kokoma? Yanola mituna moke", guided_hide: "Koma ndenge olingi",
     q: ["Mosala na yo ezali nini?", "Osali yango mibu boni?", "Osalaki wapi (atelier, société, yo moko)?", "Oyebi kosala nini? Pesa misala na yo.", "Osalaka na bisaleli to ba machine nini?", "Likambo moko osalaki malamu (na motango soki ekoki)?", "Olobaka minoko nini?", "Kelasi to formation nini osalaki, ata ya mokuse?"],
@@ -290,6 +376,8 @@ function applyUI() {
   renderGuided();
   renderOfferSelect();
   renderAlertLangs();
+  renderPickers();
+  document.querySelectorAll("[data-tp]").forEach((el) => { el.placeholder = t(el.dataset.tp); });
   $("batch-toggle").textContent = t("batch_toggle");
   if (!listening) $("mic").textContent = t("mic");
   $("story").placeholder = "Nkombo na ngai ezali Jean. Nazali électricien na Kinshasa, nasali mosala oyo mibu motoba…";
@@ -300,7 +388,7 @@ document.querySelectorAll("[data-ui]").forEach((b) => b.addEventListener("click"
 
 document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
-  ["cv", "offer", "match", "alert"].forEach((n) => { $("panel-" + n).hidden = n !== b.dataset.tab; });
+  ["cv", "offer", "match", "alert", "talk"].forEach((n) => { $("panel-" + n).hidden = n !== b.dataset.tab; });
 }));
 
 let guidedOn = false;
@@ -434,7 +522,12 @@ $("go-match").onclick = () => run("match", { cv: $("mcv").value, offer: $("moffe
 });
 
 // ---- Voice: dictation (browser service) and read aloud (voices installed on the computer) ----
-const SPEECH_LANG = { fr: "fr-FR", en: "en-US", sw: "sw-KE", es: "es-ES", pt: "pt-PT", ar: "ar-SA", zh: "zh-CN", hi: "hi-IN", ru: "ru-RU" };
+// Browser dictation language tags. Languages not listed are tried with their own code; if the
+// browser does not know them, Mosala asks the person to type instead.
+const SPEECH_LANG = { fr: "fr-FR", en: "en-US", sw: "sw-KE", es: "es-ES", pt: "pt-PT", ar: "ar-SA", zh: "zh-CN", hi: "hi-IN", ru: "ru-RU",
+  bn: "bn-BD", ur: "ur-PK", am: "am-ET", zu: "zu-ZA", af: "af-ZA", xh: "xh-ZA", so: "so-SO", rw: "rw-RW", yo: "yo-NG", ig: "ig-NG",
+  ha: "ha-NG", ln: "ln-CD", arz: "ar-EG", ary: "ar-MA", aeb: "ar-TN", arq: "ar-DZ", ayl: "ar-LY", apd: "ar-SD", mg: "mg-MG",
+  st: "st-ZA", tn: "tn-ZA", ts: "ts-ZA", ss: "ss-ZA", ve: "ve-ZA", nso: "nso-ZA", nr: "nr-ZA", ny: "ny-MW", sn: "sn-ZW", lg: "lg-UG", wo: "wo-SN" };
 let listening = false, recog = null;
 $("mic").onclick = () => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -452,14 +545,32 @@ $("mic").onclick = () => {
   listening = true; $("mic").textContent = t("mic_stop"); showStatus(""); recog.start();
 };
 
-function speak(text, code) {
-  if (!("speechSynthesis" in window)) return showStatus(t("no_voice"));
-  const want = (SPEECH_LANG[code] || code).slice(0, 2);
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith(want));
-  if (!voice) return showStatus(t("no_voice"));
+// Read aloud with a voice installed on the device. Returns false when there is no voice for the language.
+function speak(text, code, quiet) {
+  const tag = (SPEECH_LANG[code] || code).toLowerCase(), base = tag.split("-")[0];
+  const voices = "speechSynthesis" in window ? speechSynthesis.getVoices() : [];
+  const norm = (v) => v.lang.toLowerCase().replace("_", "-");
+  const voice = voices.find((v) => norm(v) === tag) || voices.find((v) => norm(v).split("-")[0] === base);
+  if (!voice) { if (!quiet) showStatus(t("no_voice")); return false; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text.replace(/[#*>]/g, "")); u.voice = voice; u.lang = voice.lang;
   speechSynthesis.speak(u);
+  return true;
+}
+
+// Push to talk: one sentence, then onText(said). Pressing again stops.
+let activeDictation = null;
+function dictate(code, btn, onText) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return showStatus(t("dictation_off"));
+  if (activeDictation) { const same = activeDictation.btn === btn; activeDictation.rec.stop(); if (same) return; }
+  const rec = new SR(); rec.lang = SPEECH_LANG[code] || code; rec.continuous = false; rec.interimResults = false;
+  rec.onresult = (e) => { const said = [...e.results].map((r) => r[0].transcript).join(" ").trim(); if (said) onText(said); };
+  rec.onerror = (e) => { if (e.error !== "no-speech" && e.error !== "aborted") showStatus(t("dictation_off")); };
+  rec.onend = () => { btn.classList.remove("on"); btn.textContent = t("say"); if (activeDictation && activeDictation.rec === rec) activeDictation = null; };
+  showStatus(""); btn.classList.add("on"); btn.textContent = t("say_stop");
+  activeDictation = { rec, btn };
+  try { rec.start(); } catch (e) { rec.onend(); showStatus(t("dictation_off")); }
 }
 function listenButton(text, code) {
   const b = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("listen") });
@@ -472,9 +583,25 @@ function renderAlertLangs() {
   const box = $("alert-langs"); if (!GROUPS.length) return;
   const checked = new Set([...box.querySelectorAll("input:checked")].map((i) => i.value));
   const use = checked.size ? checked : new Set(ALERT_DEFAULT);
-  const langs = GROUPS.filter((g) => g.id !== "world").flatMap((g) => g.langs).concat(GROUPS.find((g) => g.id === "world").langs.slice(0, 3));
+  // DR Congo and the main African languages by default; any country adds its own languages to the list.
+  const L = LANGS(), extra = [...alertExtra].map((c) => L[c]).filter(Boolean);
+  const base = GROUPS.filter((g) => !["world", "africa_more"].includes(g.id)).flatMap((g) => g.langs)
+    .concat(GROUPS.find((g) => g.id === "world").langs.slice(0, 3));
+  const baseCodes = new Set(base.map((l) => l.code));
+  const langs = base.concat(extra)
+    .filter((l, i, all) => all.findIndex((x) => x.code === l.code) === i);
+  extra.forEach((l) => use.add(l.code));
   box.innerHTML = langs.map((l) => `<label><input type="checkbox" value="${l.code}"${use.has(l.code) ? " checked" : ""}> ${l.native}</label>`).join("");
+  alertExtra.clear(); [...box.querySelectorAll("input:checked")].forEach((i) => { if (!baseCodes.has(i.value)) alertExtra.add(i.value); });
+  const sel = $("alert-country"), name = (c) => (ui === "en" ? c.en : c.fr);
+  sel.innerHTML = `<option value="">${t("alert_country")}</option>` + [...COUNTRIES].sort((a, b) => name(a).localeCompare(name(b)))
+    .map((c) => `<option value="${c.code}">${esc(name(c))}</option>`).join("");
 }
+const alertExtra = new Set();
+$("alert-country").onchange = (e) => {
+  const c = COUNTRIES.find((x) => x.code === e.target.value); if (!c) return;
+  c.langs.forEach((code) => alertExtra.add(code)); renderAlertLangs();
+};
 $("go-alert").onclick = () => run("alert", { message: $("alert-msg").value, langs: [...$("alert-langs").querySelectorAll("input:checked")].map((i) => i.value) }, (box, d) => {
   d.translations.forEach((r) => {
     const card = document.createElement("div"); card.className = "card2"; card.dir = "auto";
@@ -550,12 +677,153 @@ $("batch-run").onclick = async () => {
   $("batch-run").disabled = false;
 };
 
+// ---- Conversation ----
+let COUNTRIES = [];
+const LANGS = () => Object.fromEntries(GROUPS.flatMap((g) => g.langs.map((l) => [l.code, { ...l, group: g.id }])));
+const esc = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// A country select and a language select that work together. state = { country, lang }.
+function fillPicker(cSel, lSel, state) {
+  if (!GROUPS.length) return;
+  const name = (c) => (ui === "en" ? c.en : c.fr);
+  const sorted = [...COUNTRIES].sort((a, b) => (a.code === "CD" ? -1 : b.code === "CD" ? 1 : name(a).localeCompare(name(b))));
+  cSel.innerHTML = `<option value="">${t("all_countries")}</option>` +
+    sorted.map((c) => `<option value="${c.code}"${c.code === state.country ? " selected" : ""}>${esc(name(c))}</option>`).join("");
+  const L = LANGS(), label = (l) => `${esc(l.native)}${l.tier !== "good" ? " · " + t("tier_" + l.tier) : ""}`;
+  const country = COUNTRIES.find((c) => c.code === state.country);
+  if (country) {
+    const codes = country.langs.filter((c) => L[c]);
+    if (!codes.includes(state.lang)) state.lang = codes[0];
+    lSel.innerHTML = codes.map((c) => `<option value="${c}"${c === state.lang ? " selected" : ""}>${label(L[c])}</option>`).join("");
+  } else {
+    lSel.innerHTML = GROUPS.map((g) => `<optgroup label="${t("g_" + g.id)}">` +
+      g.langs.map((l) => `<option value="${l.code}"${l.code === state.lang ? " selected" : ""}>${label(l)}</option>`).join("") + "</optgroup>").join("");
+  }
+  lSel.value = state.lang;
+}
+function picker(box, state) {
+  box.innerHTML = `<div><label data-t="country"></label><select></select></div><div><label data-t="language"></label><select></select></div>`;
+  const [cSel, lSel] = box.querySelectorAll("select");
+  box.querySelectorAll("label").forEach((l, i) => { const id = "p" + Math.random().toString(36).slice(2); l.htmlFor = id; [cSel, lSel][i].id = id; });
+  cSel.onchange = () => { state.country = cSel.value; fillPicker(cSel, lSel, state); };
+  lSel.onchange = () => { state.lang = lSel.value; };
+  return () => fillPicker(cSel, lSel, state);
+}
+
+const sides = {
+  a: { country: "CD", lang: "fr", title: "person_a" },
+  b: { country: "CD", lang: "ln", title: "person_b" },
+};
+const roomState = { country: "CD", lang: "fr" };
+const refills = [];
+function buildTalk() {
+  for (const key of ["a", "b"]) {
+    const s = sides[key], box = $("side-" + key);
+    box.innerHTML = `<h3 data-t="${s.title}"></h3><div class="pick"></div><div class="log" aria-live="polite"></div>
+      <div class="say"><button class="btn mic-big" type="button" data-t="say"></button><input data-tp="type_here"><button class="btn ghost" type="button" data-t="send"></button></div>`;
+    refills.push(picker(box.querySelector(".pick"), s));
+    s.log = box.querySelector(".log"); s.input = box.querySelector("input");
+    const [mic, send] = box.querySelectorAll(".say button");
+    send.onclick = () => talk(key);
+    s.input.onkeydown = (e) => { if (e.key === "Enter") talk(key); };
+    mic.onclick = () => dictate(s.lang, mic, (said) => { s.input.value = said; talk(key); });
+  }
+  refills.push(picker($("room-pick"), roomState));
+}
+function renderPickers() { refills.forEach((f) => f()); }
+
+function bubble(log, html, cls) {
+  const b = document.createElement("div"); b.className = "bubble " + (cls || ""); b.dir = "auto"; b.innerHTML = html;
+  log.append(b); log.scrollTop = log.scrollHeight; return b;
+}
+function tierNote(tier) { return tier && tier !== "good" ? `<small>${t("tier_label")} : ${t("tier_" + tier)}</small>` : ""; }
+function numbersNote(list) { return list && list.length ? `<div class="warn">${t("talk_numbers").replace("{numbers}", list.join(", "))}</div>` : ""; }
+
+async function api(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, model: $("model").value }) });
+  return res.json();
+}
+function errorText(d) {
+  return d.error === "ollama_down" ? t("ollama_down") : d.error === "no_room" ? t("no_room") : d.error === "room_full" ? t("room_full")
+    : d.error.startsWith("empty") ? t("empty") : t("failed");
+}
+
+async function talk(key) {
+  const me = sides[key], other = sides[key === "a" ? "b" : "a"];
+  const text = me.input.value.trim(); if (!text) return;
+  me.input.value = "";
+  const mine = bubble(me.log, esc(text), "mine");
+  const theirs = bubble(other.log, `<span class="working on"><span class="dot"></span>${t("translating")}</span>`, "big");
+  try {
+    const d = await api("/api/talk", { text, from: me.lang, to: other.lang, check: $("opt-check").checked });
+    if (d.error) { theirs.textContent = errorText(d); return; }
+    theirs.innerHTML = esc(d.text) + numbersNote(d.missing_numbers) + tierNote(d.tier);
+    if (d.back) mine.insertAdjacentHTML("beforeend", `<small>${t("understood_as")} ${esc(d.back)}</small>`);
+    if ($("opt-speak").checked && !speak(d.text, other.lang, true)) theirs.insertAdjacentHTML("beforeend", `<small>${t("no_voice_show")}</small>`);
+  } catch (e) { theirs.textContent = t("failed"); }
+}
+$("opt-flip").onchange = (e) => $("side-b").classList.toggle("flip", e.target.checked);
+
+document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  $("mode-here").hidden = b.dataset.mode !== "here"; $("mode-room").hidden = b.dataset.mode !== "room";
+}));
+
+// Rooms: the server keeps the messages in memory; each phone asks for new ones every 1.5 seconds.
+const room = { code: "", pid: "", since: 0, timer: null, busy: false };
+async function joinRoom(code) {
+  showStatus("");
+  try {
+    const d = await api("/api/room/join", { room: code, name: $("room-name").value, lang: roomState.lang });
+    if (d.error) return showStatus(errorText(d));
+    Object.assign(room, { code: d.room, pid: d.pid, since: 0 });
+    $("room-show").textContent = d.room; $("room-log").innerHTML = "";
+    $("room-join").hidden = true; $("room-live").hidden = false;
+    clearInterval(room.timer); room.timer = setInterval(pollRoom, 1500); pollRoom();
+  } catch (e) { showStatus(t("failed")); }
+}
+async function pollRoom() {
+  if (room.busy || !room.pid) return;
+  room.busy = true;
+  try {
+    const d = await api("/api/room/poll", { room: room.code, pid: room.pid, since: room.since });
+    if (d.error) { if (d.error === "no_room") leaveRoom(); return showStatus(errorText(d)); }
+    $("room-people").textContent = t("room_people").replace("{people}", d.people.map((p) => `${p.name} (${p.native})`).join(", "));
+    for (const m of d.messages) {
+      room.since = m.id;
+      if (m.mine) { bubble($("room-log"), esc(m.text), "mine"); continue; }
+      const extra = m.text !== m.original ? `<small>${esc(m.name)} · ${esc(m.from)} : ${esc(m.original)}</small>` : `<small>${esc(m.name)}</small>`;
+      const b = bubble($("room-log"), esc(m.text) + numbersNote(m.missing_numbers) + extra + tierNote(m.tier), "big");
+      if ($("room-speak").checked && !speak(m.text, d.lang, true)) b.insertAdjacentHTML("beforeend", `<small>${t("no_voice_show")}</small>`);
+    }
+  } catch (e) { /* network hiccup: try again on the next tick */ }
+  finally { room.busy = false; }
+}
+async function sendRoom() {
+  const text = $("room-text").value.trim(); if (!text || !room.pid) return;
+  $("room-text").value = "";
+  const d = await api("/api/room/send", { room: room.code, pid: room.pid, text });
+  if (d.error) return showStatus(errorText(d));
+  pollRoom();
+}
+function leaveRoom() { clearInterval(room.timer); room.pid = ""; $("room-live").hidden = true; $("room-join").hidden = false; }
+$("room-create").onclick = () => joinRoom("");
+$("room-enter").onclick = () => { const c = $("room-code").value.trim(); if (!/^\d{4}$/.test(c)) return showStatus(t("no_room")); joinRoom(c); };
+$("room-send").onclick = sendRoom;
+$("room-text").onkeydown = (e) => { if (e.key === "Enter") sendRoom(); };
+$("room-mic").onclick = () => dictate(roomState.lang, $("room-mic"), (said) => { $("room-text").value = said; sendRoom(); });
+$("room-leave").onclick = leaveRoom;
+if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+
 (async function init() {
+  buildTalk();
   applyUI();
   try {
     const s = await (await fetch("/api/status")).json();
+    COUNTRIES = s.countries || [];
     fillSelect($("cvlang"), s.cv_languages, ui === "en" ? "en" : "fr");
-    GROUPS = s.groups; renderOfferSelect(); renderAlertLangs();
+    GROUPS = s.groups; renderOfferSelect(); renderAlertLangs(); renderPickers();
+    applyUI();
     const models = s.models.length ? s.models : [s.default];
     $("model").innerHTML = models.map((m) => `<option${m === s.default ? " selected" : ""}>${m}</option>`).join("");
     if (!s.ollama) showStatus(t("ollama_down"));

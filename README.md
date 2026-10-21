@@ -7,6 +7,10 @@ installers) never wrote a CV. Most job offers are only in French or English, whi
 live their working life in Lingala, Swahili, Kikongo or Tshiluba. Mosala lets them describe their
 work the way they would tell a friend, in their own language, and does the slow, boring part for them.
 
+Mosala grew into a language bridge for Africa: there is no Google Translate for most African
+languages, so Mosala lists every African country with at least three of its languages, and lets two
+people who share no language **talk to each other by voice**, each in their own.
+
 It runs entirely on your own computer with a local open-weight model through [Ollama](https://ollama.com).
 
 Built for the DEV Hacktoberfest 2026 Open-Source AI Challenge, Week 3: *Slow and Steady*.
@@ -18,6 +22,7 @@ Built for the DEV Hacktoberfest 2026 Open-Source AI Challenge, Week 3: *Slow and
 | `cv` | A few lines about your work, in Lingala, Swahili, Kikongo, Tshiluba, French, English or another language | A professional CV in French, English, Spanish or Portuguese (Markdown + a printable HTML page) |
 | `offer` | A job offer in French or English | The offer explained in simple words, in your language |
 | `match` | Your CV and a job offer | ATS keyword score, missing keywords, three tuned CV bullets and a cover letter draft |
+| Conversation (web page) | Two people, two languages, speaking or typing | Each one reads, and hears, the other in their own language |
 
 ### Languages
 
@@ -26,6 +31,11 @@ Mosala is Congolese first. The language menu is grouped:
 - **National languages of the DR Congo:** Lingala, Kiswahili, Kikongo, Tshiluba.
 - **Other languages of the DR Congo:** Kiluba, Otetela, Lomongo, Kinande, Mashi, Pazande.
 - **Other African languages (27):** Kinyarwanda, Kirundi, Luganda, Amharic, Oromo, Somali, Tigrinya, Hausa, Yoruba, Igbo, Twi, Ewe, Wolof, Pulaar, Bambara, Sango, Umbundu, isiZulu, isiXhosa, Afrikaans, Sesotho, Setswana, chiShona, Chichewa, Bemba, Malagasy, Tamazight.
+- **African languages, by country:** all 54 African countries, each with at least three languages
+  (African languages first, then the official ones), about 150 languages in total: Fon and Bariba in
+  Benin, Mooré and Dioula in Burkina Faso, Kikuyu, Dholuo and Luhya in Kenya, Naija and Tiv in Nigeria,
+  Serer and Jola in Senegal, Krio, Mende and Temne in Sierra Leone, Darija and Tachelhit in Morocco,
+  Dinka and Nuer in South Sudan… The list lives in [`africa.py`](africa.py) and is easy to correct.
 - **World languages:** French, English, Spanish, Portuguese, Arabic, Mandarin, Hindi, Bengali, Russian, Urdu.
 
 Each language shows the quality to expect from small open models today (good, medium or experimental),
@@ -101,9 +111,32 @@ at the bottom. Help is welcome: corrections from native speakers are the most va
   `python app.py --lan` prints an address that phones on the same Wi-Fi can open. Use it only on a
   network you trust.
 
+## Conversation: two people, two languages
+
+The **Conversation** tab removes the language barrier between two people.
+
+- **On one phone, face to face.** Person A picks a country and a language, person B too. Each presses
+  **Speak** (or types). Mosala translates and reads the translation aloud in the other person's
+  language. Tick "Turn side B upside down" and lay the phone between you: each person reads their own
+  half of the screen.
+- **On two phones.** Run `python app.py --lan`. One person creates a room and gets a 4-digit code; the
+  other opens the address on their own phone and joins with the code. Each one writes or speaks in
+  their language and receives the other's messages, translated and read aloud, in theirs. Rooms live
+  only in memory and disappear after six hours.
+- **Check the meaning.** For languages marked experimental, "Check the meaning" translates the
+  translation back into the speaker's language, so the speaker sees whether the message survived.
+- **Numbers are protected.** If a time, a price or a phone number is missing from a translation,
+  Mosala says so under the message.
+
+What depends on the device: speech recognition comes from the browser's online service and knows
+only some languages (French, English, Swahili, Arabic, Amharic, isiZulu, Afrikaans and a few more);
+for the others, people type. Reading aloud needs a voice for that language on the device; when there
+is none, Mosala says "show the screen".
+
 ## Roadmap
 
-- **Offline speech for Congolese languages**, when open speech models support them well.
+- **Offline speech for African languages**, with open speech models (such as Meta's MMS) as they improve.
+- **Corrections from speakers** for each country's list and for each translation.
 - **An Android app** that runs a small model on the phone itself.
 - **Public services**: how to get a passport, a birth certificate or a business licence, explained in your language.
 - **Language learning**: daily Lingala and Swahili phrases.
