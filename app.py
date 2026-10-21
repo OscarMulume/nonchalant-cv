@@ -44,7 +44,15 @@ def handle_cv(data: dict, chat) -> dict:
     contact = {k: (data.get(k) or "").strip() for k in ("name", "phone", "email", "city")}
     md, profile, warnings = mosala.make_cv(story, target, contact, chat)
     return {"markdown": md, "html": mosala.render_html(md, contact["name"] or "CV"),
-            "facts": profile, "warnings": warnings}
+            "facts": profile, "warnings": warnings, "titles": mosala.suggest_titles(story)}
+
+
+def handle_alert(data: dict, chat) -> dict:
+    message = (data.get("message") or "").strip()
+    langs = [l for l in data.get("langs") or [] if l in mosala.LANG_INFO][:12]
+    if not message or not langs:
+        return {"error": "empty_alert"}
+    return {"translations": mosala.translate_to_many(message, langs, chat)}
 
 
 def handle_offer(data: dict, chat) -> dict:
@@ -63,7 +71,20 @@ def handle_match(data: dict, chat) -> dict:
     return {"markdown": core.run(cv, offer, chat)}
 
 
-ROUTES = {"/api/cv": handle_cv, "/api/offer": handle_offer, "/api/match": handle_match}
+ROUTES = {"/api/cv": handle_cv, "/api/offer": handle_offer, "/api/match": handle_match, "/api/alert": handle_alert}
+
+
+def lan_address() -> str:
+    """This computer's address on the local network (Wi-Fi), for phones to connect."""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))  # no packet is sent; this only picks the right interface
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -106,7 +127,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "not_found"}, 404)
         # Only accept requests from this page, not from other websites open in the browser.
         origin = self.headers.get("Origin", "")
-        if origin and not origin.startswith(("http://localhost", "http://127.0.0.1")):
+        host = self.headers.get("Host", "")
+        if origin and origin != f"http://{host}" and not origin.startswith(("http://localhost", "http://127.0.0.1")):
             return self.send_json({"error": "forbidden"}, 403)
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY * 4:
@@ -127,10 +149,15 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Open Mosala in your browser.")
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--no-browser", action="store_true")
+    p.add_argument("--lan", action="store_true",
+                   help="let phones on the same Wi-Fi use Mosala (only on a network you trust)")
     a = p.parse_args(argv)
-    server = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+    server = ThreadingHTTPServer(("0.0.0.0" if a.lan else "127.0.0.1", a.port), Handler)
     url = f"http://localhost:{a.port}"
     print(f"Mosala is running at {url}  (press Ctrl+C to stop)")
+    if a.lan:
+        print(f"Phones on the same Wi-Fi can open: http://{lan_address()}:{a.port}")
+        print("Anyone on this network can use it while it runs. Use it only on a network you trust.")
     if not installed_models():
         print("Note: Ollama is not answering. Open the Ollama app, then reload the page.")
     if not a.no_browser:

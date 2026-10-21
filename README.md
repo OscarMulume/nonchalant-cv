@@ -82,14 +82,31 @@ Open models understand Swahili much better than Lingala, Kikongo or Tshiluba. Fo
 results vary and a fluent speaker should review the output. Explanations in a local language say so
 at the bottom. Help is welcome: corrections from native speakers are the most valuable contribution.
 
-## Roadmap: one toolkit for everyday needs
+## More tools in the same page
 
-Mosala starts with work because a job changes a family's life. The same local, multilingual approach can serve:
+- **Job titles recruiters search for.** Mosala recognises everyday trade words in French, Swahili,
+  Lingala and English (*fundi wa simu*, *wewa*, *sentinelle*, *motongi*…) and suggests the formal title
+  used in job offers, such as "Technicien en réparation de téléphones" or "Solar PV Installer".
+- **Training centre / NGO mode.** Load a CSV (one row per person: name, city, phone, email, story,
+  cv_lang). Mosala writes every CV and prints them all at once, one per page. A template is provided.
+- **Community messages.** Health centres, NGOs and local authorities write a message once (a
+  vaccination day, a safety notice) and get it in Lingala, Swahili, Kikongo, Tshiluba or any listed
+  language. Mosala flags any number (date, phone, dose) missing from a translation, and the Copy
+  button stays locked until someone ticks "Checked by a speaker". Command line: `python mosala.py alert --message msg.txt`.
+- **Voice.** "Listen" reads results aloud with the voices installed on the computer, for people who
+  read with difficulty. "Dictate" lets people speak their story in French, English or Swahili; it uses
+  the browser's online speech service, which the page says clearly. No open model handles spoken
+  Lingala offline yet.
+- **Phones on the same Wi-Fi.** A training centre with one computer can serve a whole room:
+  `python app.py --lan` prints an address that phones on the same Wi-Fi can open. Use it only on a
+  network you trust.
 
-- **Voice input**, so people who do not write can speak their story.
-- **Health and safety alerts for NGOs**, translated into the four national languages with human review before sending.
+## Roadmap
+
+- **Offline speech for Congolese languages**, when open speech models support them well.
+- **An Android app** that runs a small model on the phone itself.
 - **Public services**: how to get a passport, a birth certificate or a business licence, explained in your language.
-- **Language learning**: daily Lingala and Swahili phrases for people who do not speak the national languages.
+- **Language learning**: daily Lingala and Swahili phrases.
 - **Market prices for farmers**, in their language.
 
 ## Tests

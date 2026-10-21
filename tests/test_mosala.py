@@ -87,3 +87,31 @@ class OfferTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InnovationTests(unittest.TestCase):
+    def test_informal_trades_map_to_job_titles(self):
+        titles = mosala.suggest_titles("Mimi ni fundi wa simu huko Goma, na ninaweka panneaux solaires")
+        fr = [t["fr"] for t in titles]
+        self.assertIn("Technicien en réparation de téléphones", fr)
+        self.assertIn("Installateur photovoltaïque", fr)
+        self.assertEqual(mosala.suggest_titles("Je suis comptable"), [])
+
+    def test_titles_are_passed_to_the_model(self):
+        seen = {}
+
+        def chat(system, user, as_json):
+            if "professional CV content" in system:
+                seen["user"] = user
+            return fake_chat(system, user, as_json)
+
+        mosala.make_cv("Nazali électricien mibu motoba", "fr", {"name": "J"}, chat)
+        self.assertIn("Électricien du bâtiment", seen["user"])
+
+    def test_message_translation_flags_lost_numbers(self):
+        msg = "Vaccination gratuite le 12 novembre au centre de santé. Appelez le 112."
+        chat = lambda s, u, j: "Bokingi ya ofele mokolo 12 na centre de santé."  # noqa: E731
+        out = mosala.translate_to_many(msg, ["ln", "xx", "sw"], chat)
+        self.assertEqual([r["lang"] for r in out], ["ln", "sw"])  # unknown code skipped
+        self.assertEqual(out[0]["missing_numbers"], ["112"])
+        self.assertEqual(out[0]["tier"], "experimental")

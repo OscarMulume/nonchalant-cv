@@ -70,6 +70,15 @@
   .guided { display: grid; gap: 0 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 6px; }
   .guided[hidden] { display: none; }
   .linkish { background: none; border: 0; padding: 0; margin-top: 8px; color: var(--accent); font: 600 .95rem var(--body); cursor: pointer; text-decoration: underline; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+  .chips label { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; }
+  .chips input { width: auto; }
+  .titles { margin: 0 0 12px; padding: 10px 14px; border: 1px dashed var(--accent); border-radius: 10px; }
+  .card2 { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+  .card2 h3 { margin: 0 0 6px; font: 700 1rem var(--display); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .progress { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .note { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
   footer { margin-top: 22px; color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
   footer select { width: auto; padding: 4px 8px; }
 </style>
@@ -93,6 +102,7 @@
     <button role="tab" data-tab="cv" aria-selected="true" data-t="tab_cv"></button>
     <button role="tab" data-tab="offer" aria-selected="false" data-t="tab_offer"></button>
     <button role="tab" data-tab="match" aria-selected="false" data-t="tab_match"></button>
+    <button role="tab" data-tab="alert" aria-selected="false" data-t="tab_alert"></button>
   </nav>
 
   <!-- CV from a story -->
@@ -100,6 +110,10 @@
     <p class="lead" data-t="cv_lead"></p>
     <label for="story"><span data-t="story_label"></span> <span class="hint" data-t="story_hint"></span></label>
     <textarea id="story"></textarea>
+    <div class="actions" style="margin-top:8px">
+      <button class="btn ghost" id="mic" type="button" data-t="mic"></button>
+      <span class="note" data-t="mic_note"></span>
+    </div>
     <button class="linkish" id="guided-toggle" type="button" data-t="guided_toggle"></button>
     <div class="guided" id="guided" hidden></div>
     <div class="row">
@@ -115,6 +129,19 @@
       <span class="working" id="w-cv"><span class="dot"></span><span data-t="working"></span></span>
     </div>
     <div class="result" id="r-cv"></div>
+
+    <button class="linkish" id="batch-toggle" type="button" data-t="batch_toggle"></button>
+    <div id="batch" hidden>
+      <p class="note" data-t="batch_lead"></p>
+      <div class="actions">
+        <input type="file" id="batch-file" accept=".csv,text/csv" style="width:auto">
+        <button class="btn ghost" id="batch-template" type="button" data-t="batch_template"></button>
+        <button class="btn" id="batch-run" type="button" data-t="batch_run"></button>
+      </div>
+      <div class="progress" hidden id="batch-bar"><div></div></div>
+      <p class="note" id="batch-status"></p>
+      <div id="batch-results"></div>
+    </div>
   </section>
 
   <!-- Explain an offer -->
@@ -146,6 +173,20 @@
     <div class="result" id="r-match"></div>
   </section>
 
+  <!-- Community message (NGOs, health centres, local authorities) -->
+  <section class="panel" id="panel-alert" hidden>
+    <p class="lead" data-t="alert_lead"></p>
+    <label for="alert-msg" data-t="alert_label"></label>
+    <textarea id="alert-msg"></textarea>
+    <label data-t="alert_langs"></label>
+    <div class="chips" id="alert-langs"></div>
+    <div class="actions">
+      <button class="btn" id="go-alert" data-t="btn_alert"></button>
+      <span class="working" id="w-alert"><span class="dot"></span><span data-t="working"></span></span>
+    </div>
+    <div class="result" id="r-alert"></div>
+  </section>
+
   <footer>
     <span data-t="private"></span>
     <label style="margin:0;font-weight:400"><span data-t="model"></span> <select id="model"></select></label>
@@ -155,7 +196,8 @@
 <script>
 // Interface text. Lingala and Swahili lines should be reviewed by native speakers.
 const T = {
-  fr: { w_number_removed: "Retiré : un détail avec un chiffre que vous n'avez pas dit ({numbers}) : « {text} »", w_no_details: "Mosala n'a pas trouvé de détails sur votre travail. Ajoutez ce que vous faites et où.",
+  fr: { tab_alert: "Message communautaire", alert_lead: "Pour les ONG, centres de santé et autorités locales : écrivez un message (santé, sécurité, information) et traduisez-le dans les langues de la communauté. Chaque traduction doit être relue par un locuteur avant diffusion.", alert_label: "Le message, en français ou en anglais", alert_langs: "Langues", btn_alert: "Traduire", reviewed: "Relu et validé par un locuteur", w_alert_numbers: "Chiffres absents de cette traduction : {numbers}. Vérifiez avant de diffuser.", mic: "Dicter", mic_stop: "Arrêter la dictée", mic_note: "La dictée passe par le service en ligne du navigateur ; elle marche en français, anglais et swahili.", mic_unsupported: "La dictée n'est pas disponible ici. Utilisez Chrome ou Edge, en français, anglais ou swahili.", listen: "Écouter", no_voice: "Pas de voix installée pour cette langue sur cet ordinateur.", titles: "Titres de poste que cherchent les recruteurs", batch_toggle: "Mode centre de formation / ONG : créer plusieurs CV d'un coup", batch_lead: "Chargez un fichier CSV avec les colonnes name, city, phone, email, story, cv_lang (une ligne par personne). Mosala crée les CV un par un ; comptez 1 à 3 minutes par CV.", batch_template: "Télécharger le modèle CSV", batch_run: "Créer tous les CV", batch_progress: "CV {i} sur {n}…", batch_done: "Terminé : {n} CV créés. Relisez-les avec chaque personne.", batch_print: "Tout imprimer / PDF", batch_empty: "Choisissez d'abord un fichier CSV avec au moins une ligne.",
+    w_number_removed: "Retiré : un détail avec un chiffre que vous n'avez pas dit ({numbers}) : « {text} »", w_no_details: "Mosala n'a pas trouvé de détails sur votre travail. Ajoutez ce que vous faites et où.",
     guided_toggle: "Vous ne savez pas quoi écrire ? Répondez à quelques questions", guided_hide: "Écrire librement",
     q: ["Quel est votre métier ?", "Depuis combien d'années le faites-vous ?", "Où avez-vous travaillé (atelier, entreprise, à votre compte) ?", "Que savez-vous faire ? Citez vos tâches.", "Avec quels outils ou machines travaillez-vous ?", "Une réalisation dont vous êtes fier (avec un chiffre si possible) ?", "Quelles langues parlez-vous ?", "Études ou formations, même courtes ?"],
     g_drc_national: "Langues nationales de la RDC", g_drc_other: "Autres langues de la RDC", g_africa: "Autres langues africaines", g_world: "Langues du monde",
@@ -173,7 +215,8 @@ const T = {
     private: "Tout reste sur votre ordinateur.", model: "Modèle",
     ollama_down: "Ollama ne répond pas. Ouvrez l'application Ollama, puis rechargez cette page.", empty: "Remplissez le champ avant de lancer.",
     failed: "Ça n'a pas marché. Réessayez ; si ça recommence, essayez un autre modèle." },
-  en: { w_number_removed: "Removed a detail with a number you did not say ({numbers}): \"{text}\"", w_no_details: "Mosala could not find work details. Add what you do and where.",
+  en: { tab_alert: "Community message", alert_lead: "For NGOs, health centres and local authorities: write a message (health, safety, public information) and translate it into the community's languages. Every translation must be checked by a speaker before it is shared.", alert_label: "The message, in French or English", alert_langs: "Languages", btn_alert: "Translate", reviewed: "Checked by a speaker", w_alert_numbers: "Numbers missing from this translation: {numbers}. Check before sharing.", mic: "Dictate", mic_stop: "Stop dictation", mic_note: "Dictation uses the browser's online service; it works in French, English and Swahili.", mic_unsupported: "Dictation is not available here. Use Chrome or Edge, in French, English or Swahili.", listen: "Listen", no_voice: "No voice installed for this language on this computer.", titles: "Job titles recruiters search for", batch_toggle: "Training centre / NGO mode: create many CVs at once", batch_lead: "Load a CSV file with the columns name, city, phone, email, story, cv_lang (one row per person). Mosala writes the CVs one by one; allow 1 to 3 minutes per CV.", batch_template: "Download the CSV template", batch_run: "Create all CVs", batch_progress: "CV {i} of {n}…", batch_done: "Done: {n} CVs created. Review them with each person.", batch_print: "Print all / PDF", batch_empty: "First choose a CSV file with at least one row.",
+    w_number_removed: "Removed a detail with a number you did not say ({numbers}): \"{text}\"", w_no_details: "Mosala could not find work details. Add what you do and where.",
     guided_toggle: "Not sure what to write? Answer a few questions", guided_hide: "Write freely",
     q: ["What is your trade?", "For how many years have you done it?", "Where did you work (workshop, company, self-employed)?", "What can you do? List your tasks.", "Which tools or machines do you use?", "One thing you are proud of (with a number if you can)?", "Which languages do you speak?", "Studies or training, even short ones?"],
     g_drc_national: "National languages of the DR Congo", g_drc_other: "Other languages of the DR Congo", g_africa: "Other African languages", g_world: "World languages",
@@ -191,7 +234,8 @@ const T = {
     private: "Everything stays on your computer.", model: "Model",
     ollama_down: "Ollama is not answering. Open the Ollama app, then reload this page.", empty: "Fill in the field first.",
     failed: "That did not work. Try again; if it happens again, try another model." },
-  sw: { w_number_removed: "Imeondolewa: jambo lenye namba ambayo hukusema ({numbers}): \"{text}\"", w_no_details: "Mosala haikupata maelezo ya kazi yako. Ongeza unachofanya na wapi.",
+  sw: { tab_alert: "Ujumbe kwa jamii", alert_lead: "Kwa NGO, vituo vya afya na serikali za mitaa: andika ujumbe (afya, usalama, taarifa) na uutafsiri kwa lugha za jamii. Kila tafsiri lazima ihakikiwe na mzungumzaji kabla ya kusambazwa.", alert_label: "Ujumbe, kwa Kifaransa au Kiingereza", alert_langs: "Lugha", btn_alert: "Tafsiri", reviewed: "Imehakikiwa na mzungumzaji", w_alert_numbers: "Namba zinazokosekana kwenye tafsiri hii: {numbers}. Hakiki kabla ya kusambaza.", mic: "Ongea", mic_stop: "Simamisha", mic_note: "Kuongea kunatumia huduma ya mtandaoni ya kivinjari; kunafanya kazi kwa Kifaransa, Kiingereza na Kiswahili.", mic_unsupported: "Kuongea hakupatikani hapa. Tumia Chrome au Edge, kwa Kifaransa, Kiingereza au Kiswahili.", listen: "Sikiliza", no_voice: "Hakuna sauti iliyowekwa kwa lugha hii kwenye kompyuta hii.", titles: "Vyeo vya kazi wanavyotafuta waajiri", batch_toggle: "Kituo cha mafunzo / NGO: tengeneza CV nyingi kwa mara moja", batch_lead: "Pakia faili ya CSV yenye safu name, city, phone, email, story, cv_lang (mstari mmoja kwa kila mtu). Mosala itaandika CV moja baada ya nyingine; dakika 1 hadi 3 kwa kila CV.", batch_template: "Pakua kiolezo cha CSV", batch_run: "Tengeneza CV zote", batch_progress: "CV {i} kati ya {n}…", batch_done: "Imekamilika: CV {n} zimetengenezwa. Zihakiki pamoja na kila mtu.", batch_print: "Chapisha zote / PDF", batch_empty: "Kwanza chagua faili ya CSV yenye angalau mstari mmoja.",
+    w_number_removed: "Imeondolewa: jambo lenye namba ambayo hukusema ({numbers}): \"{text}\"", w_no_details: "Mosala haikupata maelezo ya kazi yako. Ongeza unachofanya na wapi.",
     guided_toggle: "Hujui uandike nini? Jibu maswali machache", guided_hide: "Andika kwa uhuru",
     q: ["Kazi yako ni ipi?", "Umefanya kazi hii kwa miaka mingapi?", "Umefanya kazi wapi (karakana, kampuni, kujiajiri)?", "Unajua kufanya nini? Taja kazi zako.", "Unatumia vifaa au mashine gani?", "Jambo moja unalojivunia (na idadi ikiwezekana)?", "Unazungumza lugha gani?", "Masomo au mafunzo, hata mafupi?"],
     g_drc_national: "Lugha za kitaifa za DRC", g_drc_other: "Lugha nyingine za DRC", g_africa: "Lugha nyingine za Afrika", g_world: "Lugha za dunia",
@@ -209,7 +253,8 @@ const T = {
     private: "Kila kitu kinabaki kwenye kompyuta yako.", model: "Modeli",
     ollama_down: "Ollama haijibu. Fungua programu ya Ollama, kisha pakia upya ukurasa huu.", empty: "Jaza sehemu hii kwanza.",
     failed: "Haikufanikiwa. Jaribu tena; ikitokea tena, jaribu modeli nyingine." },
-  ln: { w_number_removed: "Elongolami: likambo na motango oyo olobaki te ({numbers}): \"{text}\"", w_no_details: "Mosala ezwi makambo ya mosala na yo te. Bakisa nini osalaka mpe wapi.",
+  ln: { tab_alert: "Nsango mpo na bato", alert_lead: "Mpo na ba ONG, ba centre de santé mpe bakonzi ya quartier: koma nsango (bokolongono, libateli, sango) mpe bobongola yango na minoko ya bato. Moto oyo alobaka monoko yango asengeli kotala traduction nyonso liboso ya kopanza yango.", alert_label: "Nsango, na Français to na Anglais", alert_langs: "Minoko", btn_alert: "Bongola", reviewed: "Moto oyo alobaka monoko yango atali yango", w_alert_numbers: "Mitango oyo ezangi na traduction oyo: {numbers}. Tala malamu liboso ya kopanza.", mic: "Loba", mic_stop: "Tika koloba", mic_note: "Koloba esalaka na service ya internet ya navigateur; esalaka na Français, Anglais mpe Swahili.", mic_unsupported: "Koloba ezali awa te. Salela Chrome to Edge, na Français, Anglais to Swahili.", listen: "Yoka", no_voice: "Mongongo ya monoko oyo ezali te na ordinateur oyo.", titles: "Bankombo ya mosala oyo bapesi mosala balukaka", batch_toggle: "Centre ya formation / ONG: sala ba CV mingi mbala moko", batch_lead: "Tia fichier CSV na ba colonnes name, city, phone, email, story, cv_lang (molongo moko mpo na moto moko). Mosala ekosala ba CV moko na moko; miniti 1 tii 3 mpo na CV moko.", batch_template: "Kozwa modèle ya CSV", batch_run: "Sala ba CV nyonso", batch_progress: "CV {i} na kati ya {n}…", batch_done: "Esili: ba CV {n} esalami. Tala yango elongo na moto na moto.", batch_print: "Kobimisa nyonso / PDF", batch_empty: "Liboso, pona fichier CSV oyo ezali na molongo moko to koleka.",
+    w_number_removed: "Elongolami: likambo na motango oyo olobaki te ({numbers}): \"{text}\"", w_no_details: "Mosala ezwi makambo ya mosala na yo te. Bakisa nini osalaka mpe wapi.",
     guided_toggle: "Oyebi te nini ya kokoma? Yanola mituna moke", guided_hide: "Koma ndenge olingi",
     q: ["Mosala na yo ezali nini?", "Osali yango mibu boni?", "Osalaki wapi (atelier, société, yo moko)?", "Oyebi kosala nini? Pesa misala na yo.", "Osalaka na bisaleli to ba machine nini?", "Likambo moko osalaki malamu (na motango soki ekoki)?", "Olobaka minoko nini?", "Kelasi to formation nini osalaki, ata ya mokuse?"],
     g_drc_national: "Minoko ya ekolo ya RDC", g_drc_other: "Minoko mosusu ya RDC", g_africa: "Minoko mosusu ya Afrika", g_world: "Minoko ya mokili",
@@ -244,6 +289,9 @@ function applyUI() {
   document.querySelectorAll("[data-ui]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.ui === ui));
   renderGuided();
   renderOfferSelect();
+  renderAlertLangs();
+  $("batch-toggle").textContent = t("batch_toggle");
+  if (!listening) $("mic").textContent = t("mic");
   $("story").placeholder = "Nkombo na ngai ezali Jean. Nazali électricien na Kinshasa, nasali mosala oyo mibu motoba…";
 }
 document.querySelectorAll("[data-ui]").forEach((b) => b.addEventListener("click", () => {
@@ -252,7 +300,7 @@ document.querySelectorAll("[data-ui]").forEach((b) => b.addEventListener("click"
 
 document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
-  ["cv", "offer", "match"].forEach((n) => { $("panel-" + n).hidden = n !== b.dataset.tab; });
+  ["cv", "offer", "match", "alert"].forEach((n) => { $("panel-" + n).hidden = n !== b.dataset.tab; });
 }));
 
 let guidedOn = false;
@@ -361,12 +409,13 @@ function warnBox(list) {
 $("go-cv").onclick = () => run("cv", {
   story: storyText(), to: $("cvlang").value, name: $("name").value, city: $("city").value, phone: $("phone").value, email: $("email").value,
 }, (box, d) => {
-  box.innerHTML = warnBox(d.warnings) + `<div class="doc">${md(d.markdown)}</div>` +
+  const titles = (d.titles || []).length ? `<div class="titles"><strong>${t("titles")}</strong><br>${d.titles.map((x) => `${x.fr} · ${x.en}`).join("<br>")}</div>` : "";
+  box.innerHTML = titles + warnBox(d.warnings) + `<div class="doc">${md(d.markdown)}</div>` +
     `<details><summary>${t("facts")}</summary><pre>${JSON.stringify(d.facts, null, 2).replace(/</g, "&lt;")}</pre></details>`;
   toolbar(box, { markdown: d.markdown, html: d.html, base: "cv_" + $("cvlang").value });
   const wa = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("whatsapp") });
   wa.onclick = async () => { try { await navigator.clipboard.writeText(whatsappText(d.markdown)); wa.textContent = t("copied"); } catch (e) {} };
-  box.querySelector(".actions").append(wa);
+  box.querySelector(".actions").append(wa, listenButton(d.markdown, $("cvlang").value));
 });
 
 $("go-offer").onclick = () => run("offer", { offer: $("offer").value, lang: $("olang").value }, (box, d) => {
@@ -376,6 +425,7 @@ $("go-offer").onclick = () => run("offer", { offer: $("offer").value, lang: $("o
   if (d.local) text += `\n> ${t("local_note")}\n`;
   box.innerHTML = `<div class="doc" dir="auto">${md(text)}</div>`;
   toolbar(box, { markdown: text, base: "offer_" + $("olang").value });
+  box.querySelector(".actions").append(listenButton(d.text, $("olang").value));
 });
 
 $("go-match").onclick = () => run("match", { cv: $("mcv").value, offer: $("moffer").value }, (box, d) => {
@@ -383,12 +433,129 @@ $("go-match").onclick = () => run("match", { cv: $("mcv").value, offer: $("moffe
   toolbar(box, { markdown: d.markdown, base: "report" });
 });
 
+// ---- Voice: dictation (browser service) and read aloud (voices installed on the computer) ----
+const SPEECH_LANG = { fr: "fr-FR", en: "en-US", sw: "sw-KE", es: "es-ES", pt: "pt-PT", ar: "ar-SA", zh: "zh-CN", hi: "hi-IN", ru: "ru-RU" };
+let listening = false, recog = null;
+$("mic").onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const lang = SPEECH_LANG[ui];
+  if (!SR || !lang) return showStatus(t("mic_unsupported"));
+  if (listening) { recog && recog.stop(); return; }
+  recog = new SR(); recog.lang = lang; recog.continuous = true; recog.interimResults = false;
+  recog.onresult = (e) => {
+    const said = [...e.results].slice(e.resultIndex).map((r) => r[0].transcript).join(" ");
+    const box = guidedOn ? document.activeElement : $("story");
+    if (box && "value" in box) box.value = (box.value ? box.value + " " : "") + said.trim();
+  };
+  recog.onend = () => { listening = false; $("mic").textContent = t("mic"); };
+  recog.onerror = () => showStatus(t("mic_unsupported"));
+  listening = true; $("mic").textContent = t("mic_stop"); showStatus(""); recog.start();
+};
+
+function speak(text, code) {
+  if (!("speechSynthesis" in window)) return showStatus(t("no_voice"));
+  const want = (SPEECH_LANG[code] || code).slice(0, 2);
+  const voice = speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith(want));
+  if (!voice) return showStatus(t("no_voice"));
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/[#*>]/g, "")); u.voice = voice; u.lang = voice.lang;
+  speechSynthesis.speak(u);
+}
+function listenButton(text, code) {
+  const b = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("listen") });
+  b.onclick = () => speak(text, code); return b;
+}
+
+// ---- Community message ----
+const ALERT_DEFAULT = ["ln", "sw", "kg", "lua"];
+function renderAlertLangs() {
+  const box = $("alert-langs"); if (!GROUPS.length) return;
+  const checked = new Set([...box.querySelectorAll("input:checked")].map((i) => i.value));
+  const use = checked.size ? checked : new Set(ALERT_DEFAULT);
+  const langs = GROUPS.filter((g) => g.id !== "world").flatMap((g) => g.langs).concat(GROUPS.find((g) => g.id === "world").langs.slice(0, 3));
+  box.innerHTML = langs.map((l) => `<label><input type="checkbox" value="${l.code}"${use.has(l.code) ? " checked" : ""}> ${l.native}</label>`).join("");
+}
+$("go-alert").onclick = () => run("alert", { message: $("alert-msg").value, langs: [...$("alert-langs").querySelectorAll("input:checked")].map((i) => i.value) }, (box, d) => {
+  d.translations.forEach((r) => {
+    const card = document.createElement("div"); card.className = "card2"; card.dir = "auto";
+    const warn = r.missing_numbers.length ? `<div class="warn">${t("w_alert_numbers").replace("{numbers}", r.missing_numbers.join(", "))}</div>` : "";
+    card.innerHTML = `<h3>${r.native} <span class="tier"><b class="${r.tier}">${t("tier_" + r.tier)}</b></span></h3>${warn}<div class="doc">${md(r.text)}</div>`;
+    const bar = document.createElement("div"); bar.className = "actions";
+    const ok = Object.assign(document.createElement("label"), { innerHTML: `<input type="checkbox" style="width:auto"> ${t("reviewed")}` });
+    ok.style.fontWeight = "400"; ok.style.margin = "0";
+    const copy = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("copy"), disabled: true });
+    ok.querySelector("input").onchange = (e) => { copy.disabled = !e.target.checked; };
+    copy.onclick = async () => { try { await navigator.clipboard.writeText(r.text); copy.textContent = t("copied"); } catch (e) {} };
+    bar.append(ok, copy, listenButton(r.text, r.lang)); card.append(bar); box.append(card);
+  });
+});
+
+// ---- Training centre / NGO batch mode ----
+let batchOn = false;
+$("batch-toggle").onclick = () => { batchOn = !batchOn; $("batch").hidden = !batchOn; };
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === "," || c === ";") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); cell = ""; if (row.some((x) => x.trim())) rows.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some((x) => x.trim())) rows.push(row);
+  if (!rows.length) return [];
+  const head = rows[0].map((h) => h.trim().toLowerCase());
+  return rows.slice(1).map((r) => Object.fromEntries(head.map((h, i) => [h, (r[i] || "").trim()])));
+}
+$("batch-template").onclick = () => saveFile("mosala_template.csv",
+  'name,city,phone,email,story,cv_lang\n"Jean Mbuyi",Kinshasa,,,"Nazali électricien na Kinshasa, nasali mosala oyo mibu motoba.",fr\n"Amina Bahati",Goma,,,"Mimi ni fundi wa simu huko Goma, miaka minne.",en\n', "text/csv");
+$("batch-run").onclick = async () => {
+  const file = $("batch-file").files[0];
+  const people = file ? parseCSV(await file.text()).filter((p) => p.story) : [];
+  if (!people.length) return showStatus(t("batch_empty"));
+  showStatus(""); $("batch-run").disabled = true; $("batch-bar").hidden = false; $("batch-results").innerHTML = "";
+  const done = [];
+  for (let i = 0; i < people.length; i++) {
+    const p = people[i];
+    $("batch-status").textContent = t("batch_progress").replace("{i}", i + 1).replace("{n}", people.length);
+    $("batch-bar").firstElementChild.style.width = Math.round((i / people.length) * 100) + "%";
+    try {
+      const res = await fetch("/api/cv", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ story: p.story, name: p.name, city: p.city, phone: p.phone, email: p.email, to: p.cv_lang || "fr", model: $("model").value }) });
+      const d = await res.json();
+      if (d.error === "ollama_down") { showStatus(t("ollama_down")); break; }
+      if (d.error) continue;
+      done.push({ name: p.name || "CV " + (i + 1), d });
+      const card = document.createElement("div"); card.className = "card2";
+      card.innerHTML = `<h3>${(p.name || "CV " + (i + 1)).replace(/</g, "&lt;")}</h3>` + warnBox(d.warnings) + `<details><summary>${t("tab_cv")}</summary><div class="doc">${md(d.markdown)}</div></details>`;
+      const dl = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: t("download") + " (.md)" });
+      dl.onclick = () => saveFile(`cv_${(p.name || i + 1).toString().replace(/\W+/g, "_")}.md`, d.markdown, "text/markdown");
+      const bar = document.createElement("div"); bar.className = "actions"; bar.append(dl); card.append(bar);
+      $("batch-results").append(card);
+    } catch (e) { /* keep going with the next person */ }
+  }
+  $("batch-bar").firstElementChild.style.width = "100%";
+  $("batch-status").textContent = t("batch_done").replace("{n}", done.length);
+  if (done.length) {
+    const all = Object.assign(document.createElement("button"), { className: "btn", textContent: t("batch_print") });
+    all.onclick = () => {
+      const bodies = done.map((x) => new DOMParser().parseFromString(x.d.html, "text/html").body.innerHTML);
+      const style = new DOMParser().parseFromString(done[0].d.html, "text/html").querySelector("style").outerHTML;
+      const page = `<!doctype html><html><head><meta charset="utf-8">${style}<style>.cv{page-break-after:always}</style></head><body>${bodies.map((b) => `<div class="cv">${b}</div>`).join("")}</body></html>`;
+      const w = window.open(URL.createObjectURL(new Blob([page], { type: "text/html" }))); if (w) setTimeout(() => w.print(), 800);
+    };
+    $("batch-results").prepend(all);
+  }
+  $("batch-run").disabled = false;
+};
+
 (async function init() {
   applyUI();
   try {
     const s = await (await fetch("/api/status")).json();
     fillSelect($("cvlang"), s.cv_languages, ui === "en" ? "en" : "fr");
-    GROUPS = s.groups; renderOfferSelect();
+    GROUPS = s.groups; renderOfferSelect(); renderAlertLangs();
     const models = s.models.length ? s.models : [s.default];
     $("model").innerHTML = models.map((m) => `<option${m === s.default ? " selected" : ""}>${m}</option>`).join("");
     if (!s.ollama) showStatus(t("ollama_down"));

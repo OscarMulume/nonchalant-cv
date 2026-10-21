@@ -25,5 +25,19 @@ class AppTests(unittest.TestCase):
         self.assertIn("cisco", out["keywords"])
 
 
+class AlertAndNetworkTests(unittest.TestCase):
+    def test_alert_endpoint(self):
+        out = app.handle_alert({"message": "Réunion le 3 mai.", "langs": ["ln", "sw"]}, lambda s, u, j: "Likita mokolo 3 sanza ya mitano.")
+        self.assertEqual(len(out["translations"]), 2)
+        self.assertEqual(app.handle_alert({"message": "x", "langs": []}, None)["error"], "empty_alert")
+
+    def test_cv_endpoint_returns_titles(self):
+        out = app.handle_cv({"story": "Nazali électricien mibu motoba", "to": "fr"}, fake_chat)
+        self.assertTrue(any(t["fr"] == "Électricien du bâtiment" for t in out["titles"]))
+
+    def test_lan_address_is_an_ip(self):
+        self.assertRegex(app.lan_address(), r"^\d+\.\d+\.\d+\.\d+$")
+
+
 if __name__ == "__main__":
     unittest.main()

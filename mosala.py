@@ -153,6 +153,63 @@ def strip_unsaid_numbers(text: str, said: set[str], warnings: list[dict]) -> str
     return text
 
 
+# --- Informal trades -> job titles recruiters search for -----------------------
+# Each entry: words people use (French, Swahili, Lingala, English), then the French and
+# English titles found in job offers. Extend it: corrections from the field are welcome.
+TRADES = [
+    (["fundi wa simu", "réparateur de téléphone", "reparateur de telephone", "kobongisa telephone", "phone repair"],
+     "Technicien en réparation de téléphones", "Mobile Phone Repair Technician"),
+    (["kompyuta", "réparation d'ordinateur", "maintenance informatique", "computer repair"],
+     "Technicien de maintenance informatique", "IT Support Technician"),
+    (["électricien", "electricien", "fundi wa umeme", "courant", "electrician"],
+     "Électricien du bâtiment", "Building Electrician"),
+    (["panneau solaire", "panneaux solaires", "solaire", "solar"],
+     "Installateur photovoltaïque", "Solar PV Installer"),
+    (["mécanicien", "mecanicien", "fundi wa magari", "mobongisi ya mituka", "garage", "mechanic"],
+     "Mécanicien automobile", "Automotive Mechanic"),
+    (["maçon", "macon", "fundi wa nyumba", "motongi", "construction", "mason"],
+     "Maçon", "Mason"),
+    (["menuisier", "seremala", "fundi wa mbao", "carpenter"],
+     "Menuisier", "Carpenter"),
+    (["soudeur", "soudure", "welding", "welder"],
+     "Soudeur", "Welder"),
+    (["plombier", "fundi wa bomba", "plumber"],
+     "Plombier", "Plumber"),
+    (["frigoriste", "climatisation", "frigo", "air conditioning"],
+     "Technicien frigoriste et climatisation", "Refrigeration and AC Technician"),
+    (["couturier", "couturière", "tailleur", "fundi wa nguo", "cherehani", "tailor"],
+     "Couturier / Tailleur", "Tailor"),
+    (["coiffeur", "coiffeuse", "kinyozi", "barber", "hairdresser"],
+     "Coiffeur", "Hairdresser"),
+    (["chauffeur", "dereva", "motari", "driver"],
+     "Chauffeur", "Driver"),
+    (["wewa", "moto-taxi", "taxi-moto", "boda boda", "bodaboda"],
+     "Chauffeur-livreur moto", "Motorcycle Delivery Rider"),
+    (["sentinelle", "gardien", "agent de sécurité", "mlinzi", "security guard"],
+     "Agent de sécurité", "Security Guard"),
+    (["cuisinier", "cuisinière", "mpishi", "cook"],
+     "Cuisinier", "Cook"),
+    (["vendeur", "vendeuse", "commerçant", "muuzaji", "shop", "boutique"],
+     "Vendeur / Commerçant", "Sales Assistant"),
+    (["agriculteur", "mkulima", "élevage", "elevage", "farmer"],
+     "Agriculteur / Éleveur", "Farmer"),
+    (["infirmier", "infirmière", "muuguzi", "nurse"],
+     "Infirmier", "Nurse"),
+    (["enseignant", "mwalimu", "molakisi", "teacher"],
+     "Enseignant", "Teacher"),
+]
+
+
+def suggest_titles(story: str) -> list[dict]:
+    """Formal job titles whose everyday words appear in the story."""
+    norm = core.normalize(story)
+    found = []
+    for words, fr, en in TRADES:
+        if any(core.contains_term(norm, w) for w in words):
+            found.append({"fr": fr, "en": en})
+    return found
+
+
 # --- Step 1: understand the story ---------------------------------------------
 
 def understand(story: str, chat) -> dict:
@@ -180,7 +237,7 @@ def understand(story: str, chat) -> dict:
 
 # --- Step 2: write the CV in the target language ------------------------------
 
-def write_cv(profile: dict, target: str, chat) -> dict:
+def write_cv(profile: dict, target: str, chat, titles: list[dict] | None = None) -> dict:
     language = language_for_prompt(target)
     system = (
         f"You turn a worker's facts into professional CV content in {language}. Reply with JSON only, "
@@ -190,8 +247,13 @@ def write_cv(profile: dict, target: str, chat) -> dict:
         "Use only the facts given. Do not add numbers, employers, certificates or results that are "
         "not in the facts. Keep empty fields empty."
     )
+    user = json.dumps(profile, ensure_ascii=False)
+    if titles:
+        key = "fr" if target == "fr" else "en"
+        user += ("\n\nRecruiters search for these job titles; use the one that fits the facts as the title: "
+                 + ", ".join(t[key] for t in titles))
     try:
-        data = json.loads(chat(system, json.dumps(profile, ensure_ascii=False), True))
+        data = json.loads(chat(system, user, True))
     except json.JSONDecodeError:
         data = {}
     return data if isinstance(data, dict) else {}
@@ -271,7 +333,7 @@ def render_html(markdown: str, title: str) -> str:
 def make_cv(story: str, target: str, contact: dict, chat) -> tuple[str, dict, list[dict]]:
     warnings: list[dict] = []
     profile = understand(story, chat)
-    cv = clean_cv(write_cv(profile, target, chat), numbers_said(story), warnings)
+    cv = clean_cv(write_cv(profile, target, chat, suggest_titles(story)), numbers_said(story), warnings)
     if not cv["experiences"] and not cv["skills"]:
         warnings.append({"kind": "no_details"})
     return render_markdown(cv, target, contact), profile, warnings
@@ -287,6 +349,31 @@ def explain_offer(offer: str, lang: str, chat) -> str:
         f"{language}, keep the French or English word."
     )
     return chat(system, offer, False).strip()
+
+
+def translate_message(message: str, lang: str, chat) -> str:
+    """Translate a short community message (health, safety, public notice) for review by a speaker."""
+    language = language_for_prompt(lang)
+    system = (
+        f"Translate this public message into simple {language} for people in the community. Keep every "
+        "number, date, place, phone number and instruction exactly. Do not add advice that is not in "
+        "the message. Use short sentences. If a medical or technical word has no common equivalent, "
+        "keep the French word. Reply with the translation only."
+    )
+    return chat(system, message, False).strip()
+
+
+def translate_to_many(message: str, langs: list[str], chat) -> list[dict]:
+    out = []
+    for lang in langs:
+        if lang not in LANG_INFO:
+            continue
+        text = translate_message(message, lang, chat)
+        # Numbers carry the critical facts (dates, doses, phone numbers): flag any that changed.
+        lost = sorted(set(NUMBER.findall(message)) - set(NUMBER.findall(text)), key=int)
+        out.append({"lang": lang, "native": LANG_INFO[lang]["native"], "text": text,
+                    "tier": LANG_INFO[lang]["tier"], "missing_numbers": lost})
+    return out
 
 
 def cmd_cv(a, chat) -> int:
@@ -323,6 +410,23 @@ def cmd_offer(a, chat) -> int:
     return 0
 
 
+def cmd_alert(a, chat) -> int:
+    message = a.message.read_text(encoding="utf-8", errors="ignore")
+    langs = a.langs.split(",")
+    print("Translating the message. Every translation must be checked by a speaker before it is shared.")
+    lines = []
+    for r in translate_to_many(message, langs, chat):
+        lines += [f"## {r['native']}", "", r["text"], ""]
+        if r["missing_numbers"]:
+            lines += [f"> Check: these numbers are missing from the translation: {', '.join(r['missing_numbers'])}", ""]
+    report = "\n".join(lines)
+    out = a.out or Path("message_translations.md")
+    out.write_text(report, encoding="utf-8")
+    print(report)
+    print(f"Saved {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Mosala: your work, your language, your CV. Runs locally with Ollama.")
     p.add_argument("--model", default=DEFAULT_MODEL, help=f"Ollama model (default: {DEFAULT_MODEL})")
@@ -342,6 +446,11 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--lang", default="ln", choices=sorted(LANGUAGES), help="your language (default: ln)")
     o.add_argument("--out", type=Path)
 
+    al = sub.add_parser("alert", help="translate a community message (health, safety) into several languages")
+    al.add_argument("--message", required=True, type=Path, help="text file with the message, in French or English")
+    al.add_argument("--langs", default="ln,sw,kg,lua", help="comma-separated codes (default: the 4 national languages)")
+    al.add_argument("--out", type=Path)
+
     m = sub.add_parser("match", help="compare your CV with an offer (same as nonchalant_cv.py)")
     m.add_argument("--cv", required=True)
     m.add_argument("--offer", required=True)
@@ -355,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
 
     chat = lambda s, u, j: core.ollama_chat(a.model, s, u, j)  # noqa: E731
     try:
-        return cmd_cv(a, chat) if a.command == "cv" else cmd_offer(a, chat)
+        return {"cv": cmd_cv, "offer": cmd_offer, "alert": cmd_alert}[a.command](a, chat)
     except core.OllamaError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
